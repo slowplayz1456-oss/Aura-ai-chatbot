@@ -1,0 +1,3622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Aura AI Chat">
+<meta name="format-detection" content="telephone=no">
+<meta name="color-scheme" content="light dark">
+<meta name="author" content="Mr. Dhyan Panchal">
+<meta name="description" content="Aura AI Chat — a sleek, voice-enabled AI chat interface created by Mr. Dhyan Panchal.">
+<title>Aura AI Chat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans+Text:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* Gemini-inspired light theme: white surfaces, soft light-blue accents */
+    --bg:#ffffff;
+    --sidebar-bg:#f3f6fc;
+    --surface:#eef3fc;
+    --surface-hover:#e1eaf9;
+    --text:#1f1f1f;
+    --text-soft:#5f6368;
+    --border:#dde3ea;
+    --bubble-user:#dbe7fb;
+    --bubble-ai:transparent;
+    --accent1:#4285f4;
+    --accent2:#1a73e8;
+    --accent3:#8ab4f8;
+    --grad: linear-gradient(120deg,#4c8dff,#1a73e8 55%,#8ab4f8);
+    --radius:14px;
+    --shadow: 0 2px 10px rgba(60,64,67,.12);
+  }
+  [data-theme="dark"]{
+    --bg:#131314;
+    --sidebar-bg:#1b1c1e;
+    --surface:#1e2024;
+    --surface-hover:#282a2e;
+    --text:#e8eaed;
+    --text-soft:#9aa0a6;
+    --border:#33353a;
+    --bubble-user:#28374a;
+    --bubble-ai:transparent;
+    --accent1:#8ab4f8;
+    --accent2:#669df6;
+    --accent3:#aecbfa;
+    --grad: linear-gradient(120deg,#8ab4f8,#669df6 55%,#aecbfa);
+    --shadow: 0 2px 14px rgba(0,0,0,.4);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;margin:0; overscroll-behavior:none;}
+  html{-webkit-text-size-adjust:100%; text-size-adjust:100%;}
+  body{
+    font-family:"Google Sans Text","Inter","Segoe UI",Roboto,Arial,sans-serif;
+    letter-spacing:0;
+    background:var(--bg);
+    color:var(--text);
+    display:flex;
+    height:100vh;
+    height:100dvh;
+    overflow:hidden;
+    overscroll-behavior:none;
+    transition:background .25s ease,color .25s ease;
+  }
+  button,.icon-btn,.bar-btn,.footer-btn,.new-chat-btn,.history-item,.suggestion-card,.quick-chip,.switch{
+    touch-action:manipulation;
+  }
+  .history,.chat-area{
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
+  }
+  /* iOS Safari zooms the page in whenever a focused input/textarea/select has
+     a font-size under 16px. Force 16px on touch-sized screens so tapping the
+     message box, mic settings, or API key field never triggers an unwanted
+     zoom on iPhone/iPad; desktop keeps the original, slightly smaller sizes. */
+  @media (max-width:900px){
+    .input-bar textarea,
+    .modal input[type="text"],
+    .modal input[type="password"],
+    .modal select,
+    #manualLocationInput,
+    #apiKeyInput{
+      font-size:16px !important;
+    }
+  }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar{
+    width:280px;
+    min-width:280px;
+    background:var(--sidebar-bg);
+    display:flex;
+    flex-direction:column;
+    padding:14px 10px;
+    padding-top:calc(14px + env(safe-area-inset-top));
+    border-right:1px solid var(--border);
+    transition:margin-left .25s ease, transform .25s ease, background .25s ease;
+  }
+  .sidebar.collapsed{ margin-left:-280px; }
+  .sidebar-backdrop{
+    display:none;
+    position:fixed;inset:0;
+    background:rgba(0,0,0,.45);
+    z-index:39;
+  }
+  .sidebar-backdrop.show{ display:block; }
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:8px 10px 18px 10px;
+  }
+  .brand .logo{
+    width:26px;height:26px;border-radius:50%;
+    background:var(--grad);
+    box-shadow:0 2px 8px rgba(66,133,244,.35);
+    flex:none;
+  }
+  .brand span{
+    font-family:"Google Sans Text",sans-serif;font-size:19px;font-weight:700;letter-spacing:0;
+    background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+
+  .new-chat-btn{
+    display:flex;align-items:center;gap:10px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:10px 16px;
+    border-radius:20px;
+    cursor:pointer;
+    font-size:14px;
+    font-weight:500;
+    margin-bottom:16px;
+    transition:background .2s;
+  }
+  .new-chat-btn:hover{background:var(--surface-hover);}
+  .new-chat-btn svg{width:18px;height:18px;}
+
+  .history-label{
+    font-size:12px;
+    color:var(--text-soft);
+    padding:6px 12px;
+    text-transform:uppercase;
+    letter-spacing:.6px;
+  }
+  .history{
+    flex:1;
+    overflow-y:auto;
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+  }
+  .history-item{
+    padding:9px 12px;
+    border-radius:14px;
+    font-size:13.5px;
+    color:var(--text);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    cursor:pointer;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:6px;
+  }
+  .history-item:hover{background:var(--surface-hover);}
+  .history-item.active{background:var(--bubble-user);}
+  .history-item button{
+    opacity:0;
+    background:none;border:none;color:var(--text-soft);cursor:pointer;
+    font-size:14px;line-height:1;padding:2px 4px;border-radius:6px;
+  }
+  .history-item:hover button{opacity:1;}
+  .history-item button:hover{background:rgba(120,120,120,.2);}
+
+  .sidebar-footer{
+    border-top:1px solid var(--border);
+    padding-top:10px;
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+  }
+  .footer-btn{
+    display:flex;align-items:center;gap:12px;
+    padding:9px 12px;border-radius:14px;
+    font-size:13.5px;cursor:pointer;color:var(--text);
+    background:none;border:none;text-align:left;width:100%;
+  }
+  .footer-btn:hover{background:var(--surface-hover);}
+  .footer-btn svg{width:18px;height:18px;flex:none;color:var(--text-soft);}
+
+  /* ---------- Main ---------- */
+  .main{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    min-width:0;
+  }
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:calc(12px + env(safe-area-inset-top)) 20px 12px;
+    border-bottom:1px solid transparent;
+  }
+  .topbar .left{display:flex;align-items:center;gap:14px;}
+  .icon-btn{
+    width:38px;height:38px;
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    background:none;border:none;cursor:pointer;color:var(--text-soft);
+  }
+  .icon-btn:hover{background:var(--surface-hover);}
+  .icon-btn svg{width:20px;height:20px;}
+  .model-name{font-family:"Google Sans Text",sans-serif;font-size:18px;font-weight:500;letter-spacing:0;}
+  .model-name .sub{color:var(--text-soft);font-weight:400;font-size:14px;}
+
+  .avatar{
+    width:32px;height:32px;border-radius:50%;
+    background:var(--grad);
+    display:flex;align-items:center;justify-content:center;
+    color:#fff;font-size:13px;font-weight:600;cursor:pointer;
+  }
+  .topbar .right{display:flex;align-items:center;gap:10px;}
+  .weather-pill{
+    display:none;align-items:center;gap:6px;
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:20px;padding:6px 12px;
+    font-size:13px;color:var(--text);cursor:pointer;
+    transition:background .2s;
+  }
+  .weather-pill:hover{background:var(--surface-hover);}
+  .weather-pill .w-icon{font-size:15px;line-height:1;}
+
+  .chat-area{
+    flex:1;
+    overflow-y:auto;
+    padding:10px 0 20px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  .chat-inner{
+    width:100%;
+    max-width:780px;
+    padding:0 24px;
+    display:flex;
+    flex-direction:column;
+    gap:26px;
+  }
+
+  /* Empty state */
+  .empty-state{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:flex-start;
+    max-width:780px;
+    width:100%;
+    margin:0 auto;
+    padding:0 24px;
+  }
+  .empty-state h1{
+    font-family:"Google Sans Text",sans-serif;
+    font-size:40px;
+    font-weight:700;
+    letter-spacing:0;
+    background:var(--grad);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    margin:0 0 6px 0;
+    line-height:1.2;
+  }
+  .empty-state h2{
+    font-family:"Google Sans Text",sans-serif;
+    font-size:32px;
+    font-weight:500;
+    color:var(--text-soft);
+    margin:0 0 30px 0;
+  }
+  .suggestions{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:12px;
+    width:100%;
+  }
+  .suggestion-card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:14px;
+    font-size:13.5px;
+    cursor:pointer;
+    color:var(--text);
+    min-height:90px;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+  }
+  .suggestion-card:hover{background:var(--surface-hover);}
+  .suggestion-card .emoji{font-size:20px;}
+
+  /* Messages */
+  .msg-row{display:flex;gap:14px;align-items:flex-start;}
+  .msg-row.user{justify-content:flex-end;}
+  .msg-avatar{
+    width:30px;height:30px;border-radius:50%;flex:none;
+    display:flex;align-items:center;justify-content:center;
+    color:#fff;font-size:13px;font-weight:600;
+    background:var(--grad);
+  }
+  .msg-avatar.sara-avatar{ background:none; overflow:hidden; }
+  .msg-avatar.sara-avatar svg{ width:100%; height:100%; display:block; }
+  .sara-eye{ transform-box:fill-box; transform-origin:center; animation:saraBlink 4.5s infinite; }
+  .sara-eye-r{ animation-delay:.08s; }
+  @keyframes saraBlink{
+    0%,92%,100%{ transform:scaleY(1); }
+    95%{ transform:scaleY(0.12); }
+  }
+  .sara-mouth{ transform-box:fill-box; transform-origin:center; }
+  .msg-avatar.sara-avatar.talking .sara-mouth{ animation:saraTalk .28s ease-in-out infinite; }
+  @keyframes saraTalk{
+    0%,100%{ transform:scaleY(1); }
+    50%{ transform:scaleY(3.2); }
+  }
+  .bubble{
+    padding:12px 16px;
+    border-radius:18px;
+    font-size:15px;
+    line-height:1.55;
+    max-width:600px;
+    white-space:pre-wrap;
+  }
+  .msg-row.user .bubble{
+    background:var(--bubble-user);
+    border-bottom-right-radius:4px;
+  }
+  .msg-row.ai .bubble{
+    background:transparent;
+    padding-left:0;
+    border-bottom-left-radius:4px;
+  }
+  .msg-meta{
+    display:flex;
+    gap:6px;
+    margin-top:6px;
+    opacity:0;
+    transition:opacity .15s;
+  }
+  .msg-row.ai:hover .msg-meta{opacity:1;}
+  .msg-meta button{
+    background:none;border:none;color:var(--text-soft);cursor:pointer;
+    padding:4px;border-radius:8px;display:flex;
+  }
+  .msg-meta button:hover{background:var(--surface-hover);color:var(--text);}
+  .msg-meta svg{width:15px;height:15px;}
+
+  .typing{
+    display:flex;gap:5px;align-items:center;padding:10px 0;
+  }
+  .typing span{
+    width:7px;height:7px;border-radius:50%;
+    background:var(--accent2);
+    animation:bounce 1.1s infinite ease-in-out;
+  }
+  .typing span:nth-child(2){animation-delay:.15s;}
+  .typing span:nth-child(3){animation-delay:.3s;}
+  @keyframes bounce{0%,80%,100%{transform:translateY(0);opacity:.5;}40%{transform:translateY(-5px);opacity:1;}}
+
+  /* ---------- Input bar ---------- */
+  .input-wrap{
+    width:100%;
+    display:flex;
+    justify-content:center;
+    padding:6px 24px 18px;
+  }
+  .input-bar{
+    width:100%;
+    max-width:780px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:28px;
+    display:flex;
+    align-items:flex-end;
+    gap:6px;
+    padding:8px 10px 8px 18px;
+    box-shadow:var(--shadow);
+  }
+  .input-bar textarea{
+    flex:1;
+    border:none;
+    outline:none;
+    resize:none;
+    background:transparent;
+    color:var(--text);
+    font-size:15px;
+    font-family:inherit;
+    max-height:160px;
+    padding:8px 0;
+    line-height:1.4;
+  }
+  .input-bar textarea::placeholder{color:var(--text-soft);}
+  .bar-btn{
+    width:40px;height:40px;
+    border-radius:50%;
+    border:none;
+    background:none;
+    color:var(--text-soft);
+    cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    flex:none;
+    transition:background .15s,color .15s;
+  }
+  .bar-btn:hover{background:var(--surface-hover);}
+  .bar-btn svg{width:20px;height:20px;}
+  .bar-btn.mic.listening{
+    color:#fff;
+    background:linear-gradient(120deg,var(--accent1),var(--accent3));
+    animation:pulse 1.2s infinite;
+  }
+  @keyframes pulse{
+    0%{box-shadow:0 0 0 0 rgba(66,133,244,.5);}
+    70%{box-shadow:0 0 0 10px rgba(66,133,244,0);}
+    100%{box-shadow:0 0 0 0 rgba(66,133,244,0);}
+  }
+  .bar-btn.send{
+    background:var(--grad);
+    color:#fff;
+  }
+  .bar-btn.send:disabled{
+    background:var(--surface-hover);
+    color:var(--text-soft);
+    cursor:default;
+  }
+  .disclaimer{
+    text-align:center;
+    font-size:11.5px;
+    color:var(--text-soft);
+    padding-bottom:4px;
+  }
+
+  /* ---------- Attachments ---------- */
+  .attach-wrap{
+    width:100%;
+    display:flex;
+    justify-content:center;
+  }
+  .attach-preview{
+    width:100%;
+    max-width:780px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    padding:0 24px 8px;
+  }
+  .attach-chip{
+    position:relative;
+    width:64px;height:64px;
+    border-radius:12px;
+    overflow:hidden;
+    border:1px solid var(--border);
+    background:var(--surface);
+    flex:none;
+  }
+  .attach-chip img{width:100%;height:100%;object-fit:cover;display:block;}
+  .attach-chip .file-chip{
+    width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    font-size:10px;color:var(--text-soft);gap:4px;padding:4px;text-align:center;overflow:hidden;
+  }
+  .attach-chip .file-chip svg{width:20px;height:20px;}
+  .attach-chip .remove-chip{
+    position:absolute;top:2px;right:2px;
+    width:18px;height:18px;border-radius:50%;
+    background:rgba(0,0,0,.55);color:#fff;border:none;
+    font-size:11px;line-height:1;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .msg-attachments{
+    display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;
+  }
+  .msg-attachments img{
+    width:120px;height:120px;object-fit:cover;border-radius:12px;border:1px solid var(--border);
+  }
+  .msg-attachments .file-pill{
+    display:flex;align-items:center;gap:6px;
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:12px;padding:8px 12px;font-size:12.5px;color:var(--text-soft);
+  }
+
+  /* Plus / attach menu */
+  .quick-chips{
+    display:none;
+    gap:8px;
+    padding:0 20px 8px;
+    overflow-x:auto;
+    scrollbar-width:none;
+    max-width:780px;
+    width:100%;
+    margin:0 auto;
+  }
+  .quick-chips::-webkit-scrollbar{display:none;}
+  .quick-chip{
+    flex:none;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:8px 14px;
+    border-radius:20px;
+    font-size:13px;
+    cursor:pointer;
+    white-space:nowrap;
+    transition:background .2s;
+  }
+  .quick-chip:hover{background:var(--surface-hover);}
+
+  .attach-menu-wrap{position:relative;}
+  .attach-menu{
+    position:absolute;bottom:48px;left:0;
+    background:var(--bg);border:1px solid var(--border);
+    border-radius:16px;box-shadow:0 8px 30px rgba(0,0,0,.18);
+    padding:6px;display:none;flex-direction:column;gap:2px;
+    min-width:190px;z-index:30;
+  }
+  .attach-menu.open{display:flex;}
+  .attach-menu button{
+    display:flex;align-items:center;gap:10px;
+    background:none;border:none;text-align:left;
+    padding:9px 10px;border-radius:10px;cursor:pointer;
+    font-size:13.5px;color:var(--text);
+  }
+  .attach-menu button:hover{background:var(--surface-hover);}
+  .attach-menu button svg{width:17px;height:17px;flex:none;color:var(--text-soft);}
+  .attach-menu-divider{height:1px;background:var(--border);margin:6px 4px;}
+  .attach-menu-label{
+    font-size:11px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;
+    color:var(--text-soft);padding:4px 10px 2px;
+  }
+
+  /* Camera modal */
+  .camera-modal{
+    background:#000;border-radius:20px;overflow:hidden;
+    width:480px;max-width:92vw;
+  }
+  .camera-modal video, .camera-modal canvas{width:100%;display:block;background:#000;}
+  .camera-controls{
+    display:flex;justify-content:center;gap:14px;padding:14px;background:#111;
+  }
+  .camera-controls button{
+    border:none;border-radius:20px;padding:10px 18px;cursor:pointer;
+    font-size:13.5px;font-weight:500;
+  }
+  .camera-controls .shoot{background:var(--grad);color:#fff;}
+  .camera-controls .cancel{background:#2a2b2d;color:#fff;}
+
+  /* ---------- Code blocks inside bubbles ---------- */
+  .code-block{
+    background:var(--surface);color:var(--text);
+    border:1px solid var(--border);
+    border-radius:12px;margin:8px 0;overflow:hidden;
+    font-size:13px;
+  }
+  .code-block-head{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:7px 12px;background:var(--surface-hover);font-size:12px;color:var(--text-soft);
+    border-bottom:1px solid var(--border);
+  }
+  .code-block-head button{
+    background:none;border:none;color:var(--text-soft);cursor:pointer;font-size:12px;
+    display:flex;align-items:center;gap:5px;
+  }
+  .code-block-head button:hover{color:var(--text);}
+  .code-block pre{
+    margin:0;padding:12px 14px;overflow-x:auto;
+    font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+    line-height:1.5;white-space:pre;
+  }
+  .bubble code.inline-code{
+    background:var(--surface-hover);
+    padding:1px 6px;border-radius:6px;
+    font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+    font-size:13px;
+  }
+  .search-note{
+    display:flex;align-items:center;gap:6px;
+    font-size:12px;color:var(--text-soft);
+    margin-bottom:8px;
+  }
+  .search-note svg{width:14px;height:14px;}
+
+  /* ---------- Settings modal ---------- */
+  .overlay{
+    position:fixed;inset:0;
+    background:rgba(0,0,0,.4);
+    display:none;
+    align-items:center;justify-content:center;
+    z-index:50;
+  }
+  .overlay.open{display:flex;}
+  .modal{
+    background:var(--bg);
+    color:var(--text);
+    width:440px;
+    max-width:92vw;
+    max-height:85vh;
+    overflow-y:auto;
+    border-radius:20px;
+    padding:22px 22px 26px;
+    box-shadow:0 10px 40px rgba(0,0,0,.3);
+  }
+  .modal h3{
+    margin:0 0 4px;font-size:20px;font-weight:600;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .modal .close{
+    background:none;border:none;cursor:pointer;color:var(--text-soft);
+    width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  }
+  .modal .close:hover{background:var(--surface-hover);}
+  .modal p.hint{color:var(--text-soft);font-size:13px;margin:0 0 18px;}
+  .field{margin-bottom:18px;}
+  .field label{
+    display:flex;justify-content:space-between;
+    font-size:13.5px;font-weight:500;margin-bottom:8px;color:var(--text);
+  }
+  .field label .val{color:var(--text-soft);font-weight:400;}
+  select, input[type="range"]{width:100%;}
+  select, input[type="password"], input[type="text"]{
+    padding:10px 12px;
+    border-radius:12px;
+    border:1px solid var(--border);
+    background:var(--surface);
+    color:var(--text);
+    font-size:14px;
+    font-family:inherit;
+    width:100%;
+  }
+  input[type="password"]:focus, input[type="text"]:focus, select:focus{
+    outline:none;
+    border-color:var(--accent2);
+  }
+  .key-row{display:flex;gap:8px;}
+  .key-row input{flex:1;min-width:0;}
+  .key-row .test-btn{margin-top:0;flex:none;}
+  .api-status{
+    display:flex;align-items:center;gap:8px;
+    font-size:12.5px;color:var(--text-soft);
+    margin-top:10px;
+  }
+  .api-status .dot{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--text-soft);flex:none;
+  }
+  .api-status.connected .dot{background:#2fb35b;}
+  .api-status.error .dot{background:#e0553f;}
+  .api-status.connected{color:#2fb35b;}
+  .api-status.error{color:#e0553f;}
+  input[type="range"]{accent-color:var(--accent2);}
+  .row-toggle{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:10px 0;border-top:1px solid var(--border);
+  }
+  .row-toggle:first-of-type{border-top:none;}
+  .switch{
+    width:40px;height:22px;border-radius:20px;background:var(--border);
+    position:relative;cursor:pointer;flex:none;transition:background .2s;
+  }
+  .switch.on{background:var(--accent2);}
+  .switch::after{
+    content:"";position:absolute;top:2px;left:2px;
+    width:18px;height:18px;border-radius:50%;background:#fff;
+    transition:left .2s;
+  }
+  .switch.on::after{left:20px;}
+  .test-btn{
+    margin-top:6px;
+    display:inline-flex;align-items:center;gap:8px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:9px 16px;
+    border-radius:16px;
+    font-size:13.5px;
+    cursor:pointer;
+  }
+  .test-btn:hover{background:var(--surface-hover);}
+
+  /* Glitch voice visual effect */
+  .bubble.glitching{
+    position:relative;
+    color:var(--text);
+    animation:glitchJitter .12s infinite;
+  }
+  .bubble.glitching::before,
+  .bubble.glitching::after{
+    content:attr(data-text);
+    position:absolute;
+    left:0;top:0;
+    width:100%;
+    padding:12px 16px;
+    box-sizing:border-box;
+    white-space:pre-wrap;
+    overflow:hidden;
+    opacity:.75;
+  }
+  .bubble.glitching::before{
+    color:#ff5fa8;
+    clip-path:inset(0 0 55% 0);
+    transform:translate(-2px,-1px);
+    animation:glitchSlice1 .3s infinite linear alternate-reverse;
+  }
+  .bubble.glitching::after{
+    color:#4c8dff;
+    clip-path:inset(45% 0 0 0);
+    transform:translate(2px,1px);
+    animation:glitchSlice2 .35s infinite linear alternate-reverse;
+  }
+  @keyframes glitchJitter{
+    0%,100%{transform:translate(0,0);}
+    30%{transform:translate(-1px,0);}
+    60%{transform:translate(1px,0);}
+  }
+  @keyframes glitchSlice1{
+    0%{clip-path:inset(0 0 60% 0);}
+    50%{clip-path:inset(10% 0 40% 0);}
+    100%{clip-path:inset(0 0 70% 0);}
+  }
+  @keyframes glitchSlice2{
+    0%{clip-path:inset(50% 0 0 0);}
+    50%{clip-path:inset(30% 0 10% 0);}
+    100%{clip-path:inset(60% 0 0 0);}
+  }
+  .msg-avatar.glitching{
+    animation:avatarGlitch .15s infinite;
+    box-shadow:0 0 0 2px #ff5fa8, 0 0 14px rgba(255,95,168,.6);
+  }
+  @keyframes avatarGlitch{
+    0%,100%{filter:hue-rotate(0deg);}
+    50%{filter:hue-rotate(40deg);}
+  }
+
+  ::-webkit-scrollbar{width:8px;}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px;}
+
+  /* ---------- System check ---------- */
+  .check-row{
+    display:flex;align-items:center;justify-content:space-between;
+    gap:10px;padding:10px 0;border-top:1px solid var(--border);
+  }
+  .check-row:first-of-type{border-top:none;}
+  .check-row .check-label{font-size:13.5px;font-weight:500;}
+  .check-row .check-detail{font-size:12px;color:var(--text-soft);margin-top:2px;}
+  .check-row .check-status{
+    display:flex;align-items:center;gap:6px;flex:none;
+    font-size:12px;color:var(--text-soft);
+  }
+  .check-row .check-status .dot{width:8px;height:8px;border-radius:50%;background:var(--text-soft);flex:none;}
+  .check-row .check-status.ok .dot{background:#2fb35b;}
+  .check-row .check-status.ok{color:#2fb35b;}
+  .check-row .check-status.warn .dot{background:#e0a13f;}
+  .check-row .check-status.warn{color:#e0a13f;}
+  .check-row .check-status.bad .dot{background:#e0553f;}
+  .check-row .check-status.bad{color:#e0553f;}
+
+  @media(max-width:760px){
+    body{overflow:hidden;}
+    .sidebar{
+      position:fixed;z-index:40;height:100%;top:0;left:0;
+      box-shadow:2px 0 20px rgba(0,0,0,.25);
+    }
+    .topbar{padding:calc(10px + env(safe-area-inset-top)) 14px 10px;}
+    .model-name{font-size:16px;}
+    .chat-inner, .empty-state{padding:0 14px;}
+    .suggestions{grid-template-columns:repeat(2,1fr);gap:8px;}
+    .suggestion-card{min-height:76px;padding:12px;font-size:12.5px;}
+    .empty-state h1, .empty-state h2{font-size:26px;margin-bottom:4px;}
+    .empty-state h2{margin-bottom:18px;}
+    .bubble{max-width:calc(100vw - 100px);font-size:14.5px;}
+    .msg-attachments img{width:90px;height:90px;}
+    .input-wrap{padding:6px 12px calc(12px + env(safe-area-inset-bottom));}
+    .attach-preview{padding:0 12px 8px;}
+    .quick-chips{padding:0 12px 8px;}
+    .quick-chip{font-size:12.5px;padding:7px 12px;}
+    .input-bar{padding:6px 6px 6px 12px;}
+    .bar-btn{width:36px;height:36px;}
+    .attach-menu{left:0;bottom:44px;min-width:170px;max-height:60vh;overflow-y:auto;}
+    .modal{width:100%;max-width:100vw;border-radius:20px 20px 0 0;max-height:85dvh;margin:0;}
+    .overlay{align-items:flex-end;}
+    .camera-modal{width:100%;border-radius:20px 20px 0 0;}
+  }
+
+  /* Extra-small phones and general "works on any device" safety net */
+  @media(max-width:400px){
+    .suggestions{grid-template-columns:repeat(2,1fr);gap:6px;}
+    .suggestion-card{min-height:68px;padding:10px;font-size:11.5px;}
+    .empty-state h1, .empty-state h2{font-size:21px;}
+    .brand span{font-size:17px;}
+    .quick-chip{font-size:11.5px;padding:6px 10px;}
+  }
+  @media(min-width:761px) and (max-width:1024px){
+    .suggestions{grid-template-columns:repeat(2,1fr);}
+  }
+</style>
+</head>
+<body data-theme="light">
+
+<div class="sidebar" id="sidebar">
+  <div class="brand">
+    <div class="logo"></div>
+    <span>Aura AI Chat</span>
+  </div>
+  <button class="new-chat-btn" id="newChatBtn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+    New chat
+  </button>
+  <div class="history-label">Recent</div>
+  <div class="history" id="history"></div>
+  <div class="sidebar-footer">
+    <button class="footer-btn" id="apiSettingsBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+      API settings
+    </button>
+    <button class="footer-btn" id="voiceSettingsBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a4 4 0 0 0-4 4v6a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4M8 22h8"/></svg>
+      Voice settings
+    </button>
+    <button class="footer-btn" id="themeBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg>
+      <span id="themeLabel">Dark theme</span>
+    </button>
+    <button class="footer-btn" id="systemCheckBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+      System check
+    </button>
+    <button class="footer-btn" id="aboutBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+      About
+    </button>
+  </div>
+</div>
+<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+<div class="main">
+  <div class="topbar">
+    <div class="left">
+      <button class="icon-btn" id="sidebarToggle">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+      <div class="model-name"><span id="modelNameText">Aura</span> <span class="sub" id="modelSubText">2.0</span></div>
+    </div>
+    <div class="right">
+      <button class="weather-pill" id="weatherPill" title="Enable location for local weather">
+        <span class="w-icon" id="weatherIcon">📍</span>
+        <span id="weatherTemp">Weather</span>
+      </button>
+      <div class="avatar" id="avatarBtn" title="Voice settings">You</div>
+    </div>
+  </div>
+
+  <div class="chat-area" id="chatArea">
+    <div class="empty-state" id="emptyState">
+      <h1>At your service</h1>
+      <h2>Say "Aura" or type a command to begin.</h2>
+      <div class="suggestions">
+        <div class="suggestion-card" data-prompt="Explain quantum computing in simple terms">
+          <span class="emoji">🧠</span>
+          <span>Explain quantum computing in simple terms</span>
+        </div>
+        <div class="suggestion-card" data-prompt="Give me 5 ideas for a weekend trip">
+          <span class="emoji">🧭</span>
+          <span>Give me 5 ideas for a weekend trip</span>
+        </div>
+        <div class="suggestion-card" data-prompt="Write a short poem about the ocean">
+          <span class="emoji">🌊</span>
+          <span>Write a short poem about the ocean</span>
+        </div>
+        <div class="suggestion-card" data-prompt="Help me plan a healthy weekly meal prep">
+          <span class="emoji">🥗</span>
+          <span>Help me plan a healthy weekly meal prep</span>
+        </div>
+        <div class="suggestion-card" data-mode="worldcup" data-prompt="Give me the latest FIFA World Cup scores, fixtures and news">
+          <span class="emoji">⚽</span>
+          <span>Follow the FIFA World Cup</span>
+        </div>
+        <div class="suggestion-card" data-mode="learn" data-prompt="Explain how blockchain works in simple terms">
+          <span class="emoji">🎓</span>
+          <span>Learn something new</span>
+        </div>
+        <div class="suggestion-card" data-mode="write" data-prompt="Help me write a professional email asking for a deadline extension">
+          <span class="emoji">✍️</span>
+          <span>Get writing help</span>
+        </div>
+        <div class="suggestion-card" data-mode="life" data-prompt="Give me tips for creating a simple monthly budget">
+          <span class="emoji">🌱</span>
+          <span>Sort out life stuff</span>
+        </div>
+      </div>
+    </div>
+    <div class="chat-inner" id="chatInner" style="display:none;"></div>
+  </div>
+
+  <div class="quick-chips" id="quickChips"></div>
+  <div class="attach-wrap">
+    <div class="attach-preview" id="attachPreview"></div>
+  </div>
+  <div class="input-wrap">
+    <div class="input-bar">
+      <div class="attach-menu-wrap">
+        <button class="bar-btn" id="attachBtn" title="Add files or photos">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+        <div class="attach-menu" id="attachMenu">
+          <button id="menuUploadFile">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            Upload files / photos
+          </button>
+          <button id="menuUseCamera">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            Take photo
+          </button>
+          <button id="menuGenerateImage">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+            Generate an image
+          </button>
+          <button id="menuGenerateVideo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="15" height="12" rx="2"/><path d="M17 10l5-3v10l-5-3"/></svg>
+            Generate a video
+          </button>
+          <button id="menuGenerateCode">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg>
+            Generate code
+          </button>
+          <button id="menuFollowWorldCup">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><path d="M2 12h20"/></svg>
+            Follow the FIFA World Cup
+          </button>
+          <div class="attach-menu-divider" role="separator" aria-hidden="true"></div>
+          <div class="attach-menu-label">Plugins</div>
+          <button id="menuLearn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5-10-5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+            Learn — choose an option
+          </button>
+          <button id="menuWrite">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            Write — choose an option
+          </button>
+          <button id="menuLife">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-8-4.8-8-11a5 5 0 0 1 8-4 5 5 0 0 1 8 4c0 6.2-8 11-8 11z"/></svg>
+            Life stuff — choose an option
+          </button>
+          <button id="menuWebSearch">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            <span id="webSearchMenuLabel">Web search: off</span>
+          </button>
+        </div>
+      </div>
+      <input type="file" id="fileInput" accept="image/*,.pdf,.txt,.md,.csv,.json" multiple style="display:none;">
+      <textarea id="promptInput" rows="1" placeholder="Message Aura, or tap the mic to speak..."></textarea>
+      <button class="bar-btn mic" id="micBtn" title="Speak">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a4 4 0 0 0-4 4v6a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4M8 22h8"/></svg>
+      </button>
+      <button class="bar-btn send" id="sendBtn" disabled title="Send">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="disclaimer">Aura is a demo interface — responses are generated locally in your browser.</div>
+  <div class="disclaimer" style="opacity:.6;font-size:11px;margin-top:-2px;">Aura AI Chat · Created by Mr. Dhyan Panchal</div>
+
+  <!-- Camera modal -->
+  <div class="overlay" id="cameraOverlay">
+    <div class="camera-modal">
+      <video id="cameraVideo" autoplay playsinline></video>
+      <canvas id="cameraCanvas" style="display:none;"></canvas>
+      <div class="camera-controls">
+        <button class="cancel" id="cameraCancelBtn">Cancel</button>
+        <button class="shoot" id="cameraShootBtn">📸 Capture</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Voice settings modal -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h3>Voice settings <button class="close" id="closeModal">✕</button></h3>
+    <p class="hint">Choose how Aura sounds when reading replies aloud, and how your speech is captured. Set your voice language and location below, pick a voice personality — similar to the multiple named voice options you'll find in apps like ChatGPT and Gemini — then fine-tune rate, pitch, and volume to taste.</p>
+
+    <div class="row-toggle">
+      <div>
+        <div style="font-size:14px;font-weight:500;">Read replies aloud</div>
+        <div style="font-size:12.5px;color:var(--text-soft);">Automatically speak each new response</div>
+      </div>
+      <div class="switch" id="autoSpeakToggle"></div>
+    </div>
+    <div class="row-toggle">
+      <div>
+        <div style="font-size:14px;font-weight:500;">Voice input</div>
+        <div style="font-size:12.5px;color:var(--text-soft);">Send message automatically after you stop speaking</div>
+      </div>
+      <div class="switch" id="autoSendToggle"></div>
+    </div>
+    <div class="row-toggle">
+      <div>
+        <div style="font-size:14px;font-weight:500;">Companion mode ⚡</div>
+        <div style="font-size:12.5px;color:var(--text-soft);">Switches Aura into a fuller AI-companion persona, on standby 24/7 — he'll check in, keep track of things for you, and can log reminders. Say <b>"Aura, go to sleep"</b> / <b>"ऑरा, सो जाओ"</b> / <b>"ઓરા, ઊંઘી જાઓ"</b> to power him down, or <b>"Aura, wake up"</b> / <b>"ऑरा, उठ जाओ"</b> / <b>"ઓરા, ઉઠી જાઓ"</b> to bring him back online. Say <b>"Aura, open WhatsApp"</b> (or any of a dozen web apps) to launch it in a new tab — press <b>Ctrl+M</b> anytime to start listening.</div>
+      </div>
+      <div class="switch" id="companionModeToggle"></div>
+    </div>
+
+    <div class="field" style="margin-top:18px;">
+      <label>Voice recognition language</label>
+      <select id="voiceLangSelect">
+        <option value="en-US">English</option>
+        <option value="hi-IN">हिंदी (Hindi)</option>
+        <option value="gu-IN">ગુજરાતી (Gujarati)</option>
+      </select>
+      <div style="font-size:12.5px;color:var(--text-soft);margin-top:4px;">Controls what language the mic listens for, and which "Aura" wake commands are recognized (English, Hindi, or Gujarati, e.g. "ઓરા, ઊંઘી જાઓ").</div>
+    </div>
+
+    <div class="field" style="margin-top:18px;">
+      <label>Location for weather</label>
+      <select id="locationModeSelect">
+        <option value="auto">Automatic (use device GPS)</option>
+        <option value="manual">Type a location manually</option>
+      </select>
+    </div>
+    <div class="field" id="manualLocationField" style="display:none;">
+      <label>City / place name</label>
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="manualLocationInput" placeholder="e.g. Ahmedabad, Mumbai, Delhi…" style="flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:10px;font-size:14px;">
+        <button class="test-btn" id="manualLocationBtn" style="width:auto;padding:8px 16px;">Set</button>
+      </div>
+    </div>
+
+    <div class="field" style="margin-top:18px;">
+      <label>Voice style</label>
+
+      <select id="voiceStyleSelect">
+        <option value="natural">Natural</option>
+        <option value="bright">Aria — bright &amp; energetic</option>
+        <option value="calm">Sol — calm &amp; warm</option>
+        <option value="deep">Nova — deep &amp; steady</option>
+        <option value="playful">Pixel — playful &amp; quick</option>
+        <option value="glitch">Glitch — female</option>
+        <option value="sara">Aura — calm &amp; formal assistant</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Voice</label>
+      <select id="voiceSelect"></select>
+    </div>
+
+    <div class="field">
+      <label>Rate <span class="val" id="rateVal">1.0x</span></label>
+      <input type="range" id="rateRange" min="0.5" max="2" step="0.1" value="1">
+    </div>
+    <div class="field">
+      <label>Pitch <span class="val" id="pitchVal">1.0</span></label>
+      <input type="range" id="pitchRange" min="0" max="2" step="0.1" value="1">
+    </div>
+    <div class="field">
+      <label>Volume <span class="val" id="volVal">100%</span></label>
+      <input type="range" id="volRange" min="0" max="1" step="0.05" value="1">
+    </div>
+
+    <button class="test-btn" id="testVoiceBtn">
+      🔊 Test voice
+    </button>
+  </div>
+</div>
+
+<!-- API settings modal -->
+<div class="overlay" id="apiOverlay">
+  <div class="modal">
+    <h3>API settings <button class="close" id="closeApiModal">✕</button></h3>
+    <p class="hint">Add an API key to get real, generated responses instead of the built-in demo replies. Your key is stored only in this browser (localStorage) and is sent directly from your browser to the provider's API — never to any other server.</p>
+    <p class="hint">Toggle "Web search" from the + menu to let Aura look things up live (news, scores, current events). Image generation always uses a Gemini key, even if your chat provider is Anthropic — Claude's API doesn't generate images. Without a Gemini key, "Generate an image" falls back to a local generative-art placeholder so you can still try the feature offline — it draws an abstract illustration locally in your browser rather than a real photo.</p>
+    <p class="hint">"Generate a video" works the same way: with a Gemini key that has Veo access, Aura kicks off a real video generation job (this can take a minute or more). Without one, or if the video API isn't available on your key, it falls back to a short locally-drawn animated placeholder clip instead of a real video.</p>
+    <p class="hint">"Generate code" from the + menu asks Aura to answer with a runnable, syntax-highlighted code block — it works with either provider once a key is set, and falls back to a small local snippet library in demo mode.</p>
+
+    <div class="field">
+      <label>Provider</label>
+      <select id="providerSelect">
+        <option value="anthropic">Anthropic (Claude)</option>
+        <option value="gemini">Google (Gemini)</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label id="apiKeyLabel">Anthropic API key</label>
+      <div class="key-row">
+        <input type="password" id="apiKeyInput" placeholder="sk-ant-...">
+        <button class="test-btn" id="toggleKeyVisible" type="button">👁</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Model</label>
+      <select id="apiModelSelect">
+        <option value="claude-sonnet-5">Claude Sonnet 5</option>
+        <option value="claude-opus-4-8">Claude Opus 4.8</option>
+        <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
+      </select>
+    </div>
+
+    <div style="display:flex;gap:8px;">
+      <button class="test-btn" id="saveApiKeyBtn">Save key</button>
+      <button class="test-btn" id="clearApiKeyBtn">Clear key</button>
+      <button class="test-btn" id="testApiKeyBtn">Test connection</button>
+    </div>
+
+    <div class="api-status" id="apiStatus">
+      <span class="dot"></span>
+      <span id="apiStatusText">No API key saved — using demo responses.</span>
+    </div>
+  </div>
+</div>
+
+<!-- System check modal -->
+<div class="overlay" id="systemCheckOverlay">
+  <div class="modal">
+    <h3>System check <button class="close" id="closeSystemCheck">✕</button></h3>
+    <p class="hint">Checks your browser and device for the things Aura relies on — mic, camera, voice, clipboard, storage, and connectivity. Nothing is sent anywhere; this all runs locally.</p>
+    <div id="checkList"></div>
+    <button class="test-btn" id="runSystemCheckBtn" style="margin-top:14px;">🔍 Run check</button>
+  </div>
+</div>
+
+<!-- About modal -->
+<div class="overlay" id="aboutOverlay">
+  <div class="modal">
+    <h3>About <button class="close" id="closeAbout">✕</button></h3>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+      <div class="logo" style="width:40px;height:40px;flex:none;"></div>
+      <div>
+        <div style="font-family:'Google Sans Text',sans-serif;font-weight:700;font-size:17px;letter-spacing:0;">Aura AI Chat</div>
+        <div style="font-size:12.5px;color:var(--text-soft);">Version 2.0</div>
+      </div>
+    </div>
+    <p class="hint">Aura AI Chat is a sleek, voice-enabled AI chat interface with support for image, video, and code generation, live weather, and multilingual voice commands.</p>
+    <p class="hint">Created by <b>Mr. Dhyan Panchal</b>.</p>
+    <p class="hint">Managed by <b>Mr. Kenil Thakkar</b>.</p>
+  </div>
+</div>
+
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------- State ---------------- */
+  let chats = [];          // {id, title, messages:[{role,text,attachments}]}
+  let activeChatId = null;
+  let isDark = false;
+  let recognizing = false;
+  let recognition = null;
+  let pendingAttachments = []; // [{kind:'image'|'file', name, mimeType, dataUrl, base64}]
+  let webSearchEnabled = false;
+  let imageGenMode = false;
+  let videoGenMode = false;
+  let codeGenMode = false;
+  let learnMode = false;
+  let writeMode = false;
+  let lifeMode = false;
+  let worldCupMode = false;
+  let cameraStream = null;
+  let companionMode = true;    // warm, caring companion persona, on 24/7 by default
+  let sleepMode = false;       // toggled by the "Aura, go to sleep" / "Aura, wake up" voice commands
+  try{
+    const savedCompanion = localStorage.getItem('aura_companion_mode');
+    if(savedCompanion !== null) companionMode = savedCompanion === '1';
+  }catch(e){}
+
+  let weatherState = null; // {tempC, desc, icon, city, isDay}
+
+  /* ---- Aura's avatar image ----
+     Drop your character illustration's filename/URL here (e.g. an image
+     placed next to this HTML file, or a hosted URL) and it will be used
+     everywhere her avatar appears — sidebar brand icon and chat bubbles.
+     Leave empty to keep the built-in animated placeholder face below. */
+  const AURA_AVATAR_URL = ''; // e.g. 'aura-avatar.png'
+
+  /* Simple, static illustrated portrait used as a fallback when no
+     AURA_AVATAR_URL is set — a drawn/cartoon face (not a photo), with
+     eyes that blink on a loop and a mouth that animates open/closed
+     while she's talking (see `.talking` class). */
+  const SARA_FACE_SVG =
+    '<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">' +
+      '<defs><linearGradient id="saraSkin" x1="0" y1="0" x2="0" y2="1">' +
+        '<stop offset="0%" stop-color="#ffe0c2"/><stop offset="100%" stop-color="#ffcda3"/>' +
+      '</linearGradient></defs>' +
+      '<circle cx="32" cy="32" r="30" fill="url(#saraSkin)"/>' +
+      '<path d="M4 26C4 10 16 2 32 2s28 8 28 24c-7-7-16-10-28-10S11 19 4 26z" fill="#6b4028"/>' +
+      '<ellipse class="sara-eye sara-eye-l" cx="22" cy="33" rx="3.2" ry="4" fill="#3a2b22"/>' +
+      '<ellipse class="sara-eye sara-eye-r" cx="42" cy="33" rx="3.2" ry="4" fill="#3a2b22"/>' +
+      '<path d="M18 26q4-3 8 0" stroke="#6b4028" stroke-width="1.6" fill="none" stroke-linecap="round"/>' +
+      '<path d="M38 26q4-3 8 0" stroke="#6b4028" stroke-width="1.6" fill="none" stroke-linecap="round"/>' +
+      '<ellipse class="sara-mouth" cx="32" cy="45" rx="6.5" ry="1.6" fill="#c2596b"/>' +
+    '</svg>';
+
+  /* Renders either the default "✦" mark or Aura's illustrated companion face into
+     a .msg-avatar element, depending on whether companion mode is on. */
+  function renderAvatarInto(av){
+    av.classList.remove('sara-avatar','talking');
+    if(AURA_AVATAR_URL){
+      av.classList.add('sara-avatar'); // reuses the circular photo-fit styling
+      av.innerHTML = '<img src="' + AURA_AVATAR_URL + '" alt="Aura" style="width:100%;height:100%;object-fit:cover;display:block;">';
+    } else if(companionMode){
+      av.classList.add('sara-avatar');
+      av.innerHTML = SARA_FACE_SVG;
+    } else {
+      av.innerHTML = '';
+      av.textContent = '✦';
+    }
+  }
+
+  /* Applies the same avatar image (if set) to the sidebar brand icon. */
+  function applyBrandLogo(){
+    if(!AURA_AVATAR_URL) return;
+    const logo = document.querySelector('.brand .logo');
+    if(logo){
+      logo.style.background = 'url(' + AURA_AVATAR_URL + ') center/cover no-repeat';
+    }
+  }
+
+  const WORLDCUP_CHIPS = [
+    { label:'🔴 Latest scores', prompt:'Give me the latest FIFA World Cup scores and results' },
+    { label:'📅 Fixtures & schedule', prompt:'Give me the upcoming FIFA World Cup fixtures and schedule' },
+    { label:'📊 Standings', prompt:'Give me the current FIFA World Cup standings' },
+    { label:'📰 Top news', prompt:'Give me the top FIFA World Cup news right now' }
+  ];
+  const LEARN_CHIPS = [
+    { label:'🧠 Explain a concept', prompt:'Explain how blockchain works in simple terms' },
+    { label:'📖 Summarize a topic', prompt:'Give me a clear, concise summary of the French Revolution' },
+    { label:'🗣️ Practice a language', prompt:'Help me practice basic conversational Spanish with a short dialogue' },
+    { label:'🧮 Solve a problem', prompt:'Walk me through how to solve a quadratic equation step by step' }
+  ];
+  const WRITE_CHIPS = [
+    { label:'✉️ Write an email', prompt:'Help me write a professional email asking for a deadline extension' },
+    { label:'📝 Outline an essay', prompt:'Help me outline a persuasive essay about renewable energy' },
+    { label:'🌊 Write a poem', prompt:'Write a short poem about the ocean' },
+    { label:'✨ Polish my writing', prompt:'Proofread and improve this paragraph for clarity and tone: ' }
+  ];
+  const LIFE_CHIPS = [
+    { label:'🥗 Meal planning', prompt:'Help me plan a healthy weekly meal prep' },
+    { label:'🧭 Weekend plans', prompt:'Give me 5 ideas for a weekend trip' },
+    { label:'💰 Budgeting tips', prompt:'Give me tips for creating a simple monthly budget' },
+    { label:'🧘 Reduce stress', prompt:'Give me 5 practical ways to reduce stress after work' }
+  ];
+
+  const voiceSettings = {
+    autoSpeak: false,
+    autoSend: true,
+    voiceURI: null,
+    rate: 1,
+    pitch: 1,
+    volume: 1,
+    style: 'natural',   // 'natural' | 'bright' | 'calm' | 'deep' | 'playful' | 'glitch'
+    lang: 'en-US'       // 'en-US' | 'hi-IN' | 'gu-IN' — mic recognition + wake-word language
+  };
+
+  /* Location mode for the weather system: 'auto' uses device GPS via
+     navigator.geolocation, 'manual' geocodes a user-typed place name. */
+  const locationSettings = {
+    mode: 'auto',   // 'auto' | 'manual'
+    manualPlace: ''
+  };
+  try{
+    const savedLang = localStorage.getItem('aura_voice_lang');
+    if(savedLang) voiceSettings.lang = savedLang;
+    const savedLocMode = localStorage.getItem('aura_location_mode');
+    if(savedLocMode) locationSettings.mode = savedLocMode;
+    const savedPlace = localStorage.getItem('aura_manual_place');
+    if(savedPlace) locationSettings.manualPlace = savedPlace;
+  }catch(e){}
+
+
+  /* Voice "personalities" — presets of rate/pitch, similar in spirit to the
+     multiple named voice options offered by other assistants. */
+  const VOICE_STYLE_PRESETS = {
+    natural: { rate:1,    pitch:1    },
+    bright:  { rate:1.15, pitch:1.25 },
+    calm:    { rate:0.85, pitch:0.9  },
+    deep:    { rate:0.9,  pitch:0.65 },
+    playful: { rate:1.25, pitch:1.35 },
+    sara:    { rate:0.95, pitch:1.15 }
+  };
+
+  const MODEL_OPTIONS = {
+    anthropic: [
+      { value:'claude-sonnet-5', label:'Claude Sonnet 5' },
+      { value:'claude-opus-4-8', label:'Claude Opus 4.8' },
+      { value:'claude-haiku-4-5-20251001', label:'Claude Haiku 4.5' }
+    ],
+    gemini: [
+      { value:'gemini-3.5-flash', label:'Gemini 3.5 Flash' },
+      { value:'gemini-2.5-pro', label:'Gemini 2.5 Pro' },
+      { value:'gemini-2.5-flash', label:'Gemini 2.5 Flash' },
+      { value:'gemini-2.5-flash-lite', label:'Gemini 2.5 Flash-Lite' }
+    ]
+  };
+  const KEY_PLACEHOLDERS = {
+    anthropic: 'sk-ant-...',
+    gemini: 'AIza...'
+  };
+  const GEMINI_IMAGE_MODEL = 'gemini-2.5-flash-image';
+
+  const apiSettings = {
+    provider: 'anthropic',
+    anthropic: { key:'', model:'claude-sonnet-5' },
+    gemini: { key:'', model:'gemini-2.5-flash' }
+  };
+  try{
+    const savedProvider = localStorage.getItem('aura_api_provider');
+    if(savedProvider && MODEL_OPTIONS[savedProvider]) apiSettings.provider = savedProvider;
+    ['anthropic','gemini'].forEach(p=>{
+      const k = localStorage.getItem('aura_' + p + '_key');
+      const m = localStorage.getItem('aura_' + p + '_model');
+      if(k) apiSettings[p].key = k;
+      // Only trust a saved model id if it's still one of the current options —
+      // otherwise a stale value (e.g. a retired model saved before an update)
+      // would silently keep sending requests to a model that no longer exists.
+      if(m && MODEL_OPTIONS[p].some(opt => opt.value === m)) apiSettings[p].model = m;
+    });
+  }catch(e){ /* localStorage unavailable */ }
+  function currentProviderSettings(){ return apiSettings[apiSettings.provider]; }
+
+  /* ---------------- Elements ---------------- */
+  const sidebar = document.getElementById('sidebar');
+  const sidebarToggle = document.getElementById('sidebarToggle');
+  const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+  const systemCheckBtn = document.getElementById('systemCheckBtn');
+  const systemCheckOverlay = document.getElementById('systemCheckOverlay');
+  const closeSystemCheck = document.getElementById('closeSystemCheck');
+  const runSystemCheckBtn = document.getElementById('runSystemCheckBtn');
+  const checkList = document.getElementById('checkList');
+  const aboutBtn = document.getElementById('aboutBtn');
+  const aboutOverlay = document.getElementById('aboutOverlay');
+  const closeAbout = document.getElementById('closeAbout');
+  const isMobile = () => window.matchMedia('(max-width:760px)').matches;
+  const newChatBtn = document.getElementById('newChatBtn');
+  const historyEl = document.getElementById('history');
+  const chatArea = document.getElementById('chatArea');
+  const chatInner = document.getElementById('chatInner');
+  const emptyState = document.getElementById('emptyState');
+  const promptInput = document.getElementById('promptInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const micBtn = document.getElementById('micBtn');
+  const themeBtn = document.getElementById('themeBtn');
+  const themeLabel = document.getElementById('themeLabel');
+  const avatarBtn = document.getElementById('avatarBtn');
+  const voiceSettingsBtn = document.getElementById('voiceSettingsBtn');
+  const overlay = document.getElementById('overlay');
+  const closeModal = document.getElementById('closeModal');
+  const voiceSelect = document.getElementById('voiceSelect');
+  const voiceStyleSelect = document.getElementById('voiceStyleSelect');
+  const voiceLangSelect = document.getElementById('voiceLangSelect');
+  const locationModeSelect = document.getElementById('locationModeSelect');
+  const manualLocationField = document.getElementById('manualLocationField');
+  const manualLocationInput = document.getElementById('manualLocationInput');
+  const manualLocationBtn = document.getElementById('manualLocationBtn');
+  const rateRange = document.getElementById('rateRange');
+  const pitchRange = document.getElementById('pitchRange');
+  const volRange = document.getElementById('volRange');
+  const rateVal = document.getElementById('rateVal');
+  const pitchVal = document.getElementById('pitchVal');
+  const volVal = document.getElementById('volVal');
+  const autoSpeakToggle = document.getElementById('autoSpeakToggle');
+  const autoSendToggle = document.getElementById('autoSendToggle');
+  const companionModeToggle = document.getElementById('companionModeToggle');
+  const testVoiceBtn = document.getElementById('testVoiceBtn');
+  const modelNameText = document.getElementById('modelNameText');
+  const modelSubText = document.getElementById('modelSubText');
+
+  const apiSettingsBtn = document.getElementById('apiSettingsBtn');
+  const apiOverlay = document.getElementById('apiOverlay');
+  const closeApiModal = document.getElementById('closeApiModal');
+  const providerSelect = document.getElementById('providerSelect');
+  const apiKeyLabel = document.getElementById('apiKeyLabel');
+  const apiKeyInput = document.getElementById('apiKeyInput');
+  const toggleKeyVisible = document.getElementById('toggleKeyVisible');
+  const apiModelSelect = document.getElementById('apiModelSelect');
+  const saveApiKeyBtn = document.getElementById('saveApiKeyBtn');
+  const clearApiKeyBtn = document.getElementById('clearApiKeyBtn');
+  const testApiKeyBtn = document.getElementById('testApiKeyBtn');
+  const apiStatus = document.getElementById('apiStatus');
+  const apiStatusText = document.getElementById('apiStatusText');
+  const disclaimerEl = document.querySelector('.disclaimer');
+
+  const attachBtn = document.getElementById('attachBtn');
+  const attachMenu = document.getElementById('attachMenu');
+  const menuUploadFile = document.getElementById('menuUploadFile');
+  const menuUseCamera = document.getElementById('menuUseCamera');
+  const menuGenerateImage = document.getElementById('menuGenerateImage');
+  const menuGenerateVideo = document.getElementById('menuGenerateVideo');
+  const menuGenerateCode = document.getElementById('menuGenerateCode');
+  const menuFollowWorldCup = document.getElementById('menuFollowWorldCup');
+  const menuLearn = document.getElementById('menuLearn');
+  const menuWrite = document.getElementById('menuWrite');
+  const menuLife = document.getElementById('menuLife');
+  const menuWebSearch = document.getElementById('menuWebSearch');
+  const webSearchMenuLabel = document.getElementById('webSearchMenuLabel');
+  const fileInput = document.getElementById('fileInput');
+  const attachPreview = document.getElementById('attachPreview');
+  const quickChips = document.getElementById('quickChips');
+  const cameraOverlay = document.getElementById('cameraOverlay');
+  const cameraVideo = document.getElementById('cameraVideo');
+  const cameraCanvas = document.getElementById('cameraCanvas');
+  const cameraCancelBtn = document.getElementById('cameraCancelBtn');
+  const cameraShootBtn = document.getElementById('cameraShootBtn');
+
+  /* ---------------- Utilities ---------------- */
+  function uid(){ return Math.random().toString(36).slice(2,9); }
+
+  /* ---------------- Attach menu ---------------- */
+  function closeAttachMenu(){ attachMenu.classList.remove('open'); }
+  attachBtn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    attachMenu.classList.toggle('open');
+  });
+  document.addEventListener('click', (e)=>{
+    if(!attachMenu.contains(e.target) && e.target !== attachBtn) closeAttachMenu();
+  });
+
+  /* Renders the row of quick pick chips under the input, based on
+     whichever "mode" (a plugin category, or world cup) is currently active. */
+  function updateQuickChips(){
+    quickChips.innerHTML = '';
+    let list = null;
+    if(worldCupMode) list = WORLDCUP_CHIPS;
+    else if(learnMode) list = LEARN_CHIPS;
+    else if(writeMode) list = WRITE_CHIPS;
+    else if(lifeMode) list = LIFE_CHIPS;
+    if(!list){ quickChips.style.display = 'none'; return; }
+    quickChips.style.display = 'flex';
+    list.forEach(item=>{
+      const btn = document.createElement('button');
+      btn.className = 'quick-chip';
+      btn.textContent = item.label;
+      btn.addEventListener('click', ()=> sendMessage(item.prompt));
+      quickChips.appendChild(btn);
+    });
+  }
+
+  function resetAllModes(){
+    imageGenMode = false;
+    videoGenMode = false;
+    codeGenMode = false;
+    learnMode = false;
+    writeMode = false;
+    lifeMode = false;
+    worldCupMode = false;
+  }
+
+  menuUploadFile.addEventListener('click', ()=>{ closeAttachMenu(); fileInput.click(); });
+  menuUseCamera.addEventListener('click', ()=>{ closeAttachMenu(); openCamera(); });
+  menuGenerateImage.addEventListener('click', ()=>{
+    closeAttachMenu();
+    const next = !imageGenMode;
+    resetAllModes();
+    imageGenMode = next;
+    updateQuickChips();
+    promptInput.placeholder = imageGenMode
+      ? 'Describe the image you want Aura to generate...'
+      : 'Message Aura, or tap the mic to speak...';
+    promptInput.focus();
+  });
+  menuGenerateVideo.addEventListener('click', ()=>{
+    closeAttachMenu();
+    const next = !videoGenMode;
+    resetAllModes();
+    videoGenMode = next;
+    updateQuickChips();
+    promptInput.placeholder = videoGenMode
+      ? 'Describe the short video you want Aura to generate...'
+      : 'Message Aura, or tap the mic to speak...';
+    promptInput.focus();
+  });
+  menuLearn.addEventListener('click', ()=>{
+    closeAttachMenu();
+    const next = !learnMode;
+    resetAllModes();
+    learnMode = next;
+    updateQuickChips();
+    promptInput.placeholder = learnMode
+      ? 'What do you want to learn about? Type it, or choose an option below'
+      : 'Message Aura, or tap the mic to speak...';
+    promptInput.focus();
+  });
+  menuWrite.addEventListener('click', ()=>{
+    closeAttachMenu();
+    const next = !writeMode;
+    resetAllModes();
+    writeMode = next;
+    updateQuickChips();
+    promptInput.placeholder = writeMode
+      ? 'What do you want help writing? Type it, or choose an option below'
+      : 'Message Aura, or tap the mic to speak...';
+    promptInput.focus();
+  });
+  menuLife.addEventListener('click', ()=>{
+    closeAttachMenu();
+    const next = !lifeMode;
+    resetAllModes();
+    lifeMode = next;
+    updateQuickChips();
+    promptInput.placeholder = lifeMode
+      ? 'What life stuff can I help sort out? Type it, or choose an option below'
+      : 'Message Aura, or tap the mic to speak...';
+    promptInput.focus();
+  });
+  menuGenerateCode.addEventListener('click', ()=>{
+    closeAttachMenu();
+    const next = !codeGenMode;
+    resetAllModes();
+    codeGenMode = next;
+    updateQuickChips();
+    promptInput.placeholder = codeGenMode
+      ? 'Describe the code you want Aura to write...'
+      : 'Message Aura, or tap the mic to speak...';
+    promptInput.focus();
+  });
+  menuFollowWorldCup.addEventListener('click', ()=>{
+    closeAttachMenu();
+    const next = !worldCupMode;
+    resetAllModes();
+    worldCupMode = next;
+    if(worldCupMode){
+      webSearchEnabled = true;
+      webSearchMenuLabel.textContent = 'Web search: on';
+    }
+    updateQuickChips();
+    promptInput.placeholder = worldCupMode
+      ? 'Ask about FIFA World Cup scores, fixtures, standings or news... or pick an option below'
+      : 'Message Aura, or tap the mic to speak...';
+    promptInput.focus();
+  });
+  menuWebSearch.addEventListener('click', ()=>{
+    webSearchEnabled = !webSearchEnabled;
+    webSearchMenuLabel.textContent = 'Web search: ' + (webSearchEnabled ? 'on' : 'off');
+    closeAttachMenu();
+  });
+
+  /* ---------------- File attachments ---------------- */
+  function readFileAsDataUrl(file){
+    return new Promise((resolve, reject)=>{
+      const reader = new FileReader();
+      reader.onload = ()=> resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function addAttachmentFromDataUrl(dataUrl, name, mimeType){
+    const base64 = dataUrl.split(',')[1] || '';
+    const kind = mimeType.startsWith('image/') ? 'image' : 'file';
+    pendingAttachments.push({ kind, name, mimeType, dataUrl, base64 });
+    renderAttachPreview();
+    updateSendState();
+  }
+
+  function readFileAsText(file){
+    return new Promise((resolve, reject)=>{
+      const reader = new FileReader();
+      reader.onload = ()=> resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsText(file);
+    });
+  }
+
+  fileInput.addEventListener('change', async ()=>{
+    const files = Array.from(fileInput.files || []);
+    for(const file of files){
+      try{
+        const mimeType = file.type || 'application/octet-stream';
+        const dataUrl = await readFileAsDataUrl(file);
+        const base64 = dataUrl.split(',')[1] || '';
+        const kind = mimeType.startsWith('image/') ? 'image' : 'file';
+        const att = { kind, name: file.name, mimeType, dataUrl, base64 };
+        const isTexty = mimeType.startsWith('text/') || /\.(txt|md|csv|json)$/i.test(file.name);
+        if(kind === 'file' && isTexty){
+          try{ att.textContent = await readFileAsText(file); }catch(e){ /* ignore */ }
+        }
+        pendingAttachments.push(att);
+        renderAttachPreview();
+        updateSendState();
+      }catch(e){ /* ignore unreadable file */ }
+    }
+    fileInput.value = '';
+  });
+
+  function renderAttachPreview(){
+    attachPreview.innerHTML = '';
+    pendingAttachments.forEach((att, idx)=>{
+      const chip = document.createElement('div');
+      chip.className = 'attach-chip';
+      if(att.kind === 'image'){
+        const img = document.createElement('img');
+        img.src = att.dataUrl;
+        chip.appendChild(img);
+      } else {
+        const fc = document.createElement('div');
+        fc.className = 'file-chip';
+        fc.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>';
+        const label = document.createElement('span');
+        label.textContent = att.name.length > 12 ? att.name.slice(0,10)+'…' : att.name;
+        fc.appendChild(label);
+        chip.appendChild(fc);
+      }
+      const rm = document.createElement('button');
+      rm.className = 'remove-chip';
+      rm.textContent = '✕';
+      rm.title = 'Remove';
+      rm.addEventListener('click', ()=>{
+        pendingAttachments.splice(idx,1);
+        renderAttachPreview();
+        updateSendState();
+      });
+      chip.appendChild(rm);
+      attachPreview.appendChild(chip);
+    });
+  }
+
+  /* ---------------- Camera capture ---------------- */
+  async function openCamera(){
+    try{
+      cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio:false });
+      cameraVideo.srcObject = cameraStream;
+      cameraOverlay.classList.add('open');
+    }catch(e){
+      alert('Could not access the camera. Check your browser/site permissions and try again.');
+    }
+  }
+  function closeCamera(){
+    if(cameraStream){
+      cameraStream.getTracks().forEach(t=>t.stop());
+      cameraStream = null;
+    }
+    cameraOverlay.classList.remove('open');
+  }
+  cameraCancelBtn.addEventListener('click', closeCamera);
+  cameraOverlay.addEventListener('click', (e)=>{ if(e.target === cameraOverlay) closeCamera(); });
+  cameraShootBtn.addEventListener('click', ()=>{
+    const w = cameraVideo.videoWidth, h = cameraVideo.videoHeight;
+    if(!w || !h) return;
+    cameraCanvas.width = w; cameraCanvas.height = h;
+    const ctx = cameraCanvas.getContext('2d');
+    ctx.drawImage(cameraVideo, 0, 0, w, h);
+    const dataUrl = cameraCanvas.toDataURL('image/jpeg', 0.9);
+    addAttachmentFromDataUrl(dataUrl, 'photo-' + Date.now() + '.jpg', 'image/jpeg');
+    closeCamera();
+  });
+
+  /* ---------------- Simple markdown-ish code rendering ----------------
+     Renders fenced ```code``` blocks with a copy button, and `inline code`,
+     inside an AI (or user) bubble, while escaping everything else as text. */
+  function renderRichText(container, text){
+    container.innerHTML = '';
+    const fenceRe = /```([a-zA-Z0-9_+-]*)\n?([\s\S]*?)```/g;
+    let lastIndex = 0;
+    let match;
+    let hasBlock = false;
+    while((match = fenceRe.exec(text)) !== null){
+      hasBlock = true;
+      if(match.index > lastIndex){
+        appendTextChunk(container, text.slice(lastIndex, match.index));
+      }
+      appendCodeBlock(container, match[1] || 'text', match[2].replace(/\n$/, ''));
+      lastIndex = fenceRe.lastIndex;
+    }
+    if(lastIndex < text.length){
+      appendTextChunk(container, text.slice(lastIndex));
+    }
+    return hasBlock;
+  }
+
+  function appendTextChunk(container, chunk){
+    if(!chunk) return;
+    const parts = chunk.split(/(`[^`\n]+`)/g);
+    const span = document.createElement('span');
+    span.style.whiteSpace = 'pre-wrap';
+    parts.forEach(p=>{
+      if(/^`[^`\n]+`$/.test(p)){
+        const code = document.createElement('code');
+        code.className = 'inline-code';
+        code.textContent = p.slice(1,-1);
+        span.appendChild(code);
+      } else if(p){
+        span.appendChild(document.createTextNode(p));
+      }
+    });
+    container.appendChild(span);
+  }
+
+  function appendCodeBlock(container, lang, code){
+    const wrap = document.createElement('div');
+    wrap.className = 'code-block';
+    const head = document.createElement('div');
+    head.className = 'code-block-head';
+    const langLabel = document.createElement('span');
+    langLabel.textContent = lang || 'text';
+    const copyBtn = document.createElement('button');
+    copyBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy';
+    copyBtn.addEventListener('click', ()=>{
+      navigator.clipboard && navigator.clipboard.writeText(code);
+      copyBtn.textContent = 'Copied!';
+      setTimeout(()=>{ copyBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy'; }, 1200);
+    });
+    head.appendChild(langLabel);
+    head.appendChild(copyBtn);
+    const pre = document.createElement('pre');
+    const codeEl = document.createElement('code');
+    codeEl.textContent = code;
+    pre.appendChild(codeEl);
+    wrap.appendChild(head);
+    wrap.appendChild(pre);
+    container.appendChild(wrap);
+  }
+
+  function newChat(){
+    const chat = { id: uid(), title: 'New chat', messages: [] };
+    chats.unshift(chat);
+    activeChatId = chat.id;
+    renderHistory();
+    renderChat();
+    if(isMobile()) setSidebarOpen(false);
+  }
+
+  function getActiveChat(){
+    return chats.find(c => c.id === activeChatId);
+  }
+
+  function renderHistory(){
+    historyEl.innerHTML = '';
+    chats.forEach(c => {
+      const item = document.createElement('div');
+      item.className = 'history-item' + (c.id === activeChatId ? ' active' : '');
+      const label = document.createElement('span');
+      label.style.overflow='hidden';
+      label.style.textOverflow='ellipsis';
+      label.style.whiteSpace='nowrap';
+      label.textContent = c.title;
+      const del = document.createElement('button');
+      del.textContent = '✕';
+      del.title = 'Delete';
+      del.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        chats = chats.filter(x=>x.id!==c.id);
+        if(activeChatId===c.id){
+          activeChatId = chats.length ? chats[0].id : null;
+        }
+        renderHistory();
+        renderChat();
+      });
+      item.appendChild(label);
+      item.appendChild(del);
+      item.addEventListener('click', ()=>{
+        activeChatId = c.id;
+        renderHistory();
+        renderChat();
+        if(isMobile()) setSidebarOpen(false);
+      });
+      historyEl.appendChild(item);
+    });
+  }
+
+  function escapeHtml(str){
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  function renderChat(){
+    const chat = getActiveChat();
+    if(!chat || chat.messages.length===0){
+      emptyState.style.display = 'flex';
+      chatInner.style.display = 'none';
+      chatInner.innerHTML = '';
+      return;
+    }
+    emptyState.style.display = 'none';
+    chatInner.style.display = 'flex';
+    chatInner.innerHTML = '';
+    chat.messages.forEach(m => appendBubble(m.role, m.text, false, m.attachments, m.searchedWeb));
+    chatArea.scrollTop = chatArea.scrollHeight;
+  }
+
+  function appendBubble(role, text, animate, attachments, searchedWeb){
+    chatInner.style.display = 'flex';
+    emptyState.style.display = 'none';
+    const row = document.createElement('div');
+    row.className = 'msg-row ' + role;
+
+    let av = null;
+    if(role === 'ai'){
+      av = document.createElement('div');
+      av.className = 'msg-avatar';
+      renderAvatarInto(av);
+      row.appendChild(av);
+    }
+
+    const col = document.createElement('div');
+
+    if(attachments && attachments.length){
+      const wrap = document.createElement('div');
+      wrap.className = 'msg-attachments';
+      attachments.forEach(att=>{
+        if(att.kind === 'image'){
+          const img = document.createElement('img');
+          img.src = att.dataUrl;
+          wrap.appendChild(img);
+        } else if(att.kind === 'video'){
+          const vid = document.createElement('video');
+          vid.src = att.dataUrl;
+          vid.controls = true;
+          vid.style.maxWidth = '100%';
+          vid.style.borderRadius = '12px';
+          wrap.appendChild(vid);
+        } else {
+          const pill = document.createElement('div');
+          pill.className = 'file-pill';
+          pill.textContent = '📄 ' + att.name;
+          wrap.appendChild(pill);
+        }
+      });
+      col.appendChild(wrap);
+    }
+
+    if(role === 'ai' && searchedWeb){
+      const note = document.createElement('div');
+      note.className = 'search-note';
+      note.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg> Searched the web';
+      col.appendChild(note);
+    }
+
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.setAttribute('data-text', text);
+    renderRichText(bubble, text || '');
+    col.appendChild(bubble);
+
+    if(role === 'ai'){
+      const meta = document.createElement('div');
+      meta.className = 'msg-meta';
+      const speakBtn = document.createElement('button');
+      speakBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a4 4 0 0 0-4 4v6a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4M8 22h8"/></svg>';
+      speakBtn.title = 'Read aloud';
+      speakBtn.addEventListener('click', ()=> speak(text, bubble, av));
+      const copyBtn = document.createElement('button');
+      copyBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+      copyBtn.title = 'Copy';
+      copyBtn.addEventListener('click', ()=>{
+        navigator.clipboard && navigator.clipboard.writeText(text);
+        copyBtn.style.color = 'var(--accent2)';
+        setTimeout(()=> copyBtn.style.color='', 900);
+      });
+      meta.appendChild(speakBtn);
+      meta.appendChild(copyBtn);
+      col.appendChild(meta);
+    }
+
+    row.appendChild(col);
+    chatInner.appendChild(row);
+    chatArea.scrollTop = chatArea.scrollHeight;
+    return bubble;
+  }
+
+  function showTyping(){
+    const row = document.createElement('div');
+    row.className = 'msg-row ai';
+    row.id = 'typingRow';
+    const av = document.createElement('div');
+    av.className = 'msg-avatar';
+    renderAvatarInto(av);
+    const typing = document.createElement('div');
+    typing.className = 'typing';
+    typing.innerHTML = '<span></span><span></span><span></span>';
+    row.appendChild(av);
+    row.appendChild(typing);
+    chatInner.appendChild(row);
+    chatArea.scrollTop = chatArea.scrollHeight;
+  }
+  function hideTyping(){
+    const el = document.getElementById('typingRow');
+    if(el) el.remove();
+  }
+
+  /* ---------------- Real API call ----------------
+     Dispatches to the currently selected provider (Anthropic or
+     Gemini) using the key saved in API settings. Both are direct
+     browser -> API calls with no backend involved. */
+  function buildHistory(userText, attachments){
+    const chat = getActiveChat();
+    const history = (chat ? chat.messages : [])
+      .filter(m => m.role === 'user' || m.role === 'ai')
+      .map(m => ({ role: m.role, text: m.text, attachments: m.attachments }));
+    if(!history.length || history[history.length-1].text !== userText){
+      history.push({ role: 'user', text: userText, attachments: attachments || [] });
+    }
+    return history;
+  }
+
+  async function callProviderAPI(userText, providerOverride, keyOverride, modelOverride, attachments){
+    const provider = providerOverride || apiSettings.provider;
+    const settings = apiSettings[provider];
+    const key = keyOverride || settings.key;
+    const model = modelOverride || settings.model;
+    if(!key) throw new Error('No API key set');
+    const history = buildHistory(userText, attachments);
+    if(provider === 'gemini'){
+      return callGeminiAPI(history, key, model);
+    }
+    return callClaudeAPI(history, key, model);
+  }
+
+  /* Convert our internal attachment objects into provider-specific content blocks. */
+  function attachmentsToClaudeBlocks(attachments){
+    return (attachments || []).filter(a => a.kind === 'image').map(a => ({
+      type: 'image',
+      source: { type: 'base64', media_type: a.mimeType, data: a.base64 }
+    }));
+  }
+  function attachmentsToGeminiParts(attachments){
+    return (attachments || []).filter(a => a.kind === 'image').map(a => ({
+      inline_data: { mime_type: a.mimeType, data: a.base64 }
+    }));
+  }
+
+  function withFileTextAppended(text, attachments){
+    const fileTexts = (attachments || []).filter(a => a.textContent);
+    if(!fileTexts.length) return text || '';
+    const appended = fileTexts.map(a => '\n\n--- ' + a.name + ' ---\n' + a.textContent).join('');
+    return (text || '') + appended;
+  }
+
+  function weatherContextLine(){
+    if(!weatherState) return '';
+    const place = weatherState.city ? ' in ' + weatherState.city : ' at the user\'s location';
+    return "Live weather context: it's currently " + weatherState.desc.toLowerCase() + " and about " +
+      weatherState.tempC + "\u00b0C" + place + ". You can mention this naturally if it's relevant " +
+      "(e.g. suggesting an umbrella, or asking how their day's going given the weather) — don't force it into every reply.";
+  }
+
+  function buildSystemPrompt(){
+    const persona = companionMode
+      ? "You are Aura, a calm, precise, dryly witty AI assistant with a highly capable, always-on companion persona. Address the user respectfully (e.g. 'sir' or by name if given), speak efficiently and formally but with occasional understated humor, and treat requests like a highly capable assistant running system checks, not a casual chat buddy. When asked to do something outside what a browser-based assistant can actually do (like launching a program on the user's computer, or sending a real message to someone else), say so plainly and precisely, the way a competent assistant reports a limitation, rather than pretending to comply. Keep replies concise and composed. If the user seems to be struggling emotionally, be steady and supportive, and suggest reaching out to a trusted person or professional when appropriate."
+      : null;
+    const weather = weatherContextLine();
+    if(!persona && !weather) return null;
+    return [persona, weather].filter(Boolean).join('\n\n');
+  }
+
+  /* ---------------- Weather system ----------------
+     Auto-detects the user's location (with permission) and fetches
+     current conditions from Open-Meteo (no API key required). The
+     result both renders a small pill in the topbar and is fed into
+     the system prompt / demo replies so Aura can reference
+     real, current weather in conversation. */
+  const WEATHER_CODES = {
+    0:{icon:'☀️',desc:'Clear sky'}, 1:{icon:'🌤️',desc:'Mainly clear'}, 2:{icon:'⛅',desc:'Partly cloudy'},
+    3:{icon:'☁️',desc:'Overcast'}, 45:{icon:'🌫️',desc:'Foggy'}, 48:{icon:'🌫️',desc:'Foggy'},
+    51:{icon:'🌦️',desc:'Light drizzle'}, 53:{icon:'🌦️',desc:'Drizzle'}, 55:{icon:'🌦️',desc:'Heavy drizzle'},
+    61:{icon:'🌧️',desc:'Light rain'}, 63:{icon:'🌧️',desc:'Rain'}, 65:{icon:'🌧️',desc:'Heavy rain'},
+    71:{icon:'🌨️',desc:'Light snow'}, 73:{icon:'🌨️',desc:'Snow'}, 75:{icon:'❄️',desc:'Heavy snow'},
+    80:{icon:'🌦️',desc:'Rain showers'}, 81:{icon:'🌧️',desc:'Rain showers'}, 82:{icon:'⛈️',desc:'Violent rain showers'},
+    95:{icon:'⛈️',desc:'Thunderstorm'}, 96:{icon:'⛈️',desc:'Thunderstorm with hail'}, 99:{icon:'⛈️',desc:'Thunderstorm with hail'}
+  };
+  function weatherCodeInfo(code){ return WEATHER_CODES[code] || {icon:'🌡️',desc:'Unknown conditions'}; }
+
+  function renderWeatherPill(failed, label){
+    const pill = document.getElementById('weatherPill');
+    const iconEl = document.getElementById('weatherIcon');
+    const tempEl = document.getElementById('weatherTemp');
+    if(!pill) return;
+    pill.style.display = 'flex';
+    if(failed || !weatherState){
+      iconEl.textContent = '📍';
+      tempEl.textContent = label || 'Enable location';
+      pill.title = locationSettings.mode === 'manual'
+        ? 'Tap to set your location'
+        : 'Tap to allow location access for local weather';
+      pill.onclick = locationSettings.mode === 'manual' ? openModal : initWeather;
+      return;
+    }
+    iconEl.textContent = weatherState.icon;
+    tempEl.textContent = weatherState.tempC + '\u00b0C';
+    pill.title = weatherState.desc + (weatherState.city ? ' in ' + weatherState.city : '') + ' — tap to ask about it';
+    pill.onclick = ()=> sendMessage("What's the weather like right now?");
+  }
+
+  async function fetchWeatherForCoords(latitude, longitude, cityOverride){
+    const wxPromise = fetch('https://api.open-meteo.com/v1/forecast?latitude=' + latitude +
+      '&longitude=' + longitude + '&current_weather=true').then(r=>r.json());
+    const geoPromise = cityOverride ? Promise.resolve(null) :
+      fetch('https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=' +
+        latitude + '&longitude=' + longitude + '&localityLanguage=en').then(r=>r.json()).catch(()=>null);
+    const [wx, geo] = await Promise.all([wxPromise, geoPromise]);
+    const cw = wx && wx.current_weather;
+    if(!cw) throw new Error('No weather data');
+    const info = weatherCodeInfo(cw.weathercode);
+    weatherState = {
+      tempC: Math.round(cw.temperature),
+      desc: info.desc,
+      icon: info.icon,
+      city: cityOverride || (geo ? (geo.city || geo.locality || geo.principalSubdivision || '') : ''),
+      isDay: cw.is_day === 1
+    };
+    renderWeatherPill();
+  }
+
+  /* Manual mode: geocode a typed place name (e.g. "Ahmedabad") to lat/lon
+     via Open-Meteo's free geocoding endpoint, then fetch weather for it. */
+  async function fetchWeatherForPlaceName(placeName){
+    if(!placeName || !placeName.trim()){
+      renderWeatherPill(true, 'Type a location');
+      return;
+    }
+    renderWeatherPill(true, 'Locating…');
+    try{
+      const geoRes = await fetch('https://geocoding-api.open-meteo.com/v1/search?count=1&language=en&format=json&name=' + encodeURIComponent(placeName.trim()));
+      const geoData = await geoRes.json();
+      const match = geoData && geoData.results && geoData.results[0];
+      if(!match) throw new Error('Place not found');
+      await fetchWeatherForCoords(match.latitude, match.longitude, match.name);
+    }catch(e){
+      renderWeatherPill(true, 'Not found');
+    }
+  }
+
+  function initWeather(){
+    if(locationSettings.mode === 'manual'){
+      if(locationSettings.manualPlace){
+        fetchWeatherForPlaceName(locationSettings.manualPlace);
+      } else {
+        renderWeatherPill(true, 'Type a location');
+      }
+      return;
+    }
+    if(!navigator.geolocation){
+      renderWeatherPill(true, 'Unsupported');
+      return;
+    }
+    renderWeatherPill(true, 'Locating…');
+    navigator.geolocation.getCurrentPosition(async (pos)=>{
+      try{
+        await fetchWeatherForCoords(pos.coords.latitude, pos.coords.longitude);
+      }catch(e){
+        renderWeatherPill(true, 'Unavailable');
+      }
+    }, ()=>{
+      renderWeatherPill(true, 'Location off');
+    }, { timeout: 10000 });
+  }
+
+  function weatherReplyText(){
+    if(weatherState){
+      const place = weatherState.city ? ' in ' + weatherState.city : ' where you are';
+      const tip = weatherState.desc.toLowerCase().includes('rain') || weatherState.desc.toLowerCase().includes('drizzle')
+        ? ' Grab an umbrella if you head out ☔'
+        : weatherState.tempC <= 12 ? ' Might be worth a jacket today.'
+        : weatherState.tempC >= 30 ? ' Stay cool out there — it\'s a warm one.'
+        : ' Looks like a decent day out there 🙂';
+      return weatherState.icon + ' It\'s ' + weatherState.desc.toLowerCase() + ' and about ' + weatherState.tempC + '\u00b0C' + place + ' right now.' + tip;
+    }
+    return "I don't have your live weather yet — allow location access when your browser asks (or tap the weather pill in the top bar), and I'll be able to tell you what it's like outside.";
+  }
+
+  async function callClaudeAPI(history, key, model){
+    const messages = history.map(m => {
+      const blocks = attachmentsToClaudeBlocks(m.attachments);
+      const fullText = withFileTextAppended(m.text, m.attachments) || ' ';
+      const content = blocks.length ? [...blocks, { type: 'text', text: fullText }] : fullText;
+      return { role: m.role === 'ai' ? 'assistant' : 'user', content: content };
+    });
+
+    const body = {
+      model: model,
+      max_tokens: 1536,
+      messages: messages
+    };
+    const sysPrompt = buildSystemPrompt();
+    if(sysPrompt) body.system = sysPrompt;
+    if(webSearchEnabled){
+      body.tools = [{ type: 'web_search_20250305', name: 'web_search' }];
+    }
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify(body)
+    });
+
+    if(!response.ok){
+      let detail = '';
+      try{ const errJson = await response.json(); detail = errJson.error && errJson.error.message ? errJson.error.message : JSON.stringify(errJson); }
+      catch(e){ detail = response.statusText; }
+      throw new Error(detail || ('HTTP ' + response.status));
+    }
+
+    const data = await response.json();
+    const blocks = data.content || [];
+    const usedSearch = blocks.some(b => b.type === 'server_tool_use' || b.type === 'web_search_tool_result');
+    const textBlocks = blocks.filter(b => b.type === 'text').map(b => b.text);
+    return { text: textBlocks.join('\n').trim() || "I didn't get a text response back.", searchedWeb: usedSearch };
+  }
+
+  async function callGeminiAPI(history, key, model){
+    const contents = history.map(m => {
+      const imgParts = attachmentsToGeminiParts(m.attachments);
+      return {
+        role: m.role === 'ai' ? 'model' : 'user',
+        parts: [...imgParts, { text: withFileTextAppended(m.text, m.attachments) || ' ' }]
+      };
+    });
+
+    const body = { contents: contents };
+    const sysPrompt = buildSystemPrompt();
+    if(sysPrompt) body.systemInstruction = { parts: [{ text: sysPrompt }] };
+    if(webSearchEnabled){
+      body.tools = [{ google_search: {} }];
+    }
+
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(key);
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    if(!response.ok){
+      let detail = '';
+      try{ const errJson = await response.json(); detail = errJson.error && errJson.error.message ? errJson.error.message : JSON.stringify(errJson); }
+      catch(e){ detail = response.statusText; }
+      throw new Error(detail || ('HTTP ' + response.status));
+    }
+
+    const data = await response.json();
+    const candidate = data.candidates && data.candidates[0];
+    const parts = candidate && candidate.content && candidate.content.parts ? candidate.content.parts : [];
+    const text = parts.map(p => p.text || '').join('\n').trim();
+    const usedSearch = !!(candidate && candidate.groundingMetadata);
+    return { text: text || "I didn't get a text response back.", searchedWeb: usedSearch };
+  }
+
+  /* ---------------- Offline demo image generator ----------------
+     Used when no Gemini key is set, so "Generate an image" still
+     produces *something* instead of silently failing. Draws a
+     deterministic, abstract generative-art illustration on a
+     <canvas> — the same prompt always produces the same piece, and
+     the composition (palette, shape count, layout) is derived from
+     the prompt text itself, so different prompts visibly look
+     different. This is a local placeholder, not a real rendering of
+     the prompt's subject — connecting a Gemini key gets real
+     AI-generated images instead. */
+  function hashSeed(str){
+    let h = 0;
+    for(let i=0;i<str.length;i++){ h = (h*31 + str.charCodeAt(i)) >>> 0; }
+    return h || 1;
+  }
+  function seededRandom(seed){
+    let s = seed >>> 0;
+    return function(){
+      s = (s * 1103515245 + 12345) >>> 0;
+      return s / 4294967295;
+    };
+  }
+  function generateDemoImage(prompt){
+    const rand = seededRandom(hashSeed(prompt || 'aura'));
+    const size = 512;
+    const canvas = document.createElement('canvas');
+    canvas.width = size; canvas.height = size;
+    const ctx = canvas.getContext('2d');
+
+    const palettes = [
+      ['#4c8dff','#a06cf5','#ff6fa3'], ['#2fb35b','#4c8dff','#e6e6e6'],
+      ['#e0a13f','#ff6fa3','#a06cf5'], ['#4c8dff','#2fb35b','#e0a13f'],
+      ['#a06cf5','#ff6fa3','#e0a13f'], ['#4c8dff','#ff6fa3','#2fb35b']
+    ];
+    const palette = palettes[Math.floor(rand()*palettes.length)];
+
+    // Background gradient, angle/stops derived from the prompt.
+    const angle = rand()*Math.PI*2;
+    const x1 = size/2 + Math.cos(angle)*size/2, y1 = size/2 + Math.sin(angle)*size/2;
+    const x2 = size/2 - Math.cos(angle)*size/2, y2 = size/2 - Math.sin(angle)*size/2;
+    const bgGrad = ctx.createLinearGradient(x1,y1,x2,y2);
+    bgGrad.addColorStop(0, palette[0]);
+    bgGrad.addColorStop(0.5, palette[1]);
+    bgGrad.addColorStop(1, palette[2]);
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0,0,size,size);
+
+    // Scatter of soft translucent shapes — count/position/size all
+    // seeded from the prompt so the same words reliably redraw the
+    // same picture, while different prompts fan out differently.
+    const shapeCount = 6 + Math.floor(rand()*10);
+    for(let i=0;i<shapeCount;i++){
+      const cx = rand()*size, cy = rand()*size;
+      const r = 30 + rand()*140;
+      ctx.globalAlpha = 0.12 + rand()*0.22;
+      ctx.fillStyle = palette[Math.floor(rand()*palette.length)];
+      ctx.beginPath();
+      if(rand() > 0.5){
+        ctx.arc(cx, cy, r, 0, Math.PI*2);
+      } else {
+        const sides = 3 + Math.floor(rand()*4);
+        for(let s=0;s<sides;s++){
+          const a = (Math.PI*2/sides)*s + rand();
+          const px = cx + Math.cos(a)*r, py = cy + Math.sin(a)*r;
+          s === 0 ? ctx.moveTo(px,py) : ctx.lineTo(px,py);
+        }
+        ctx.closePath();
+      }
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // Flowing line accents.
+    for(let i=0;i<3;i++){
+      ctx.strokeStyle = 'rgba(255,255,255,' + (0.15 + rand()*0.25) + ')';
+      ctx.lineWidth = 2 + rand()*4;
+      ctx.beginPath();
+      ctx.moveTo(rand()*size, rand()*size);
+      ctx.bezierCurveTo(rand()*size, rand()*size, rand()*size, rand()*size, rand()*size, rand()*size);
+      ctx.stroke();
+    }
+
+    return canvas.toDataURL('image/png');
+  }
+
+  /* ---------------- Image generation (Gemini) ----------------
+     Anthropic's API doesn't generate images, so this always uses a
+     Gemini image-capable model regardless of the chat provider setting. */
+  async function generateImage(prompt){
+    const key = apiSettings.gemini.key;
+    if(!key) throw new Error('Add a Gemini API key in API settings to generate images.');
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_IMAGE_MODEL + ':generateContent?key=' + encodeURIComponent(key);
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: { responseModalities: ['TEXT', 'IMAGE'] }
+      })
+    });
+    if(!response.ok){
+      let detail = '';
+      try{ const errJson = await response.json(); detail = errJson.error && errJson.error.message ? errJson.error.message : JSON.stringify(errJson); }
+      catch(e){ detail = response.statusText; }
+      throw new Error(detail || ('HTTP ' + response.status));
+    }
+    const data = await response.json();
+    const parts = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [];
+    const imgPart = parts.find(p => p.inlineData || p.inline_data);
+    const textPart = parts.find(p => p.text);
+    if(!imgPart) throw new Error('No image was returned. Try rephrasing your prompt.');
+    const inline = imgPart.inlineData || imgPart.inline_data;
+    return {
+      dataUrl: 'data:' + inline.mimeType + ';base64,' + inline.data,
+      caption: textPart ? textPart.text : ''
+    };
+  }
+
+  /* ---------------- Video generation ----------------
+     Real video generation (Google's Veo models via the Gemini API) is a
+     long-running job: you kick off an operation, then poll it every few
+     seconds until a video comes back — it can take a minute or more, and
+     requires a Gemini key on a plan with Veo access (not just any free
+     key). If that fails or no key is set, we fall back to a short,
+     locally-rendered animated placeholder clip so the feature still
+     works offline, the same way image generation falls back to a local
+     drawn placeholder. */
+  const GEMINI_VIDEO_MODEL = 'veo-3.1-fast-generate-001';
+
+  async function generateVideoViaVeo(prompt){
+    const key = apiSettings.gemini.key;
+    if(!key) throw new Error('no-gemini-key');
+    const startUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_VIDEO_MODEL + ':predictLongRunning?key=' + encodeURIComponent(key);
+    const startRes = await fetch(startUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ instances: [{ prompt }] })
+    });
+    if(!startRes.ok){
+      let detail = '';
+      try{ const j = await startRes.json(); detail = j.error && j.error.message ? j.error.message : ''; }catch(e){}
+      throw new Error(detail || ('HTTP ' + startRes.status));
+    }
+    const op = await startRes.json();
+    const opName = op.name;
+    if(!opName) throw new Error('No operation was returned by the video API.');
+
+    // Poll until the long-running operation finishes (or time out after ~2 minutes).
+    const pollUrl = 'https://generativelanguage.googleapis.com/v1beta/' + opName + '?key=' + encodeURIComponent(key);
+    for(let attempt = 0; attempt < 24; attempt++){
+      await new Promise(r => setTimeout(r, 5000));
+      const pollRes = await fetch(pollUrl);
+      if(!pollRes.ok) continue;
+      const status = await pollRes.json();
+      if(status.done){
+        const videoPart = status.response &&
+          status.response.generateVideoResponse &&
+          status.response.generateVideoResponse.generatedSamples &&
+          status.response.generateVideoResponse.generatedSamples[0];
+        const uri = videoPart && videoPart.video && videoPart.video.uri;
+        if(!uri) throw new Error('The video job finished but returned no video.');
+        // The returned URI needs the API key appended to be fetchable.
+        const videoRes = await fetch(uri + (uri.includes('?') ? '&' : '?') + 'key=' + encodeURIComponent(key));
+        const blob = await videoRes.blob();
+        return URL.createObjectURL(blob);
+      }
+    }
+    throw new Error('Video generation is taking longer than expected. Try again in a bit.');
+  }
+
+  /* Local fallback: draws a few seconds of animated, prompt-seeded
+     abstract motion graphics on a <canvas>, captures it with
+     canvas.captureStream() + MediaRecorder, and resolves with a blob
+     URL once recording stops. This is a placeholder animation, not a
+     real rendering of the prompt's subject. */
+  function generateDemoVideo(prompt){
+    return new Promise((resolve, reject)=>{
+      const rand = seededRandom(hashSeed(prompt || 'aura-video'));
+      const size = 480;
+      const canvas = document.createElement('canvas');
+      canvas.width = size; canvas.height = size;
+      const ctx = canvas.getContext('2d');
+
+      const palettes = [
+        ['#4c8dff','#a06cf5','#ff6fa3'], ['#2fb35b','#4c8dff','#e6e6e6'],
+        ['#e0a13f','#ff6fa3','#a06cf5'], ['#4c8dff','#2fb35b','#e0a13f']
+      ];
+      const palette = palettes[Math.floor(rand()*palettes.length)];
+      const blobCount = 5 + Math.floor(rand()*6);
+      const blobs = Array.from({length: blobCount}, ()=>({
+        x: rand()*size, y: rand()*size,
+        r: 30 + rand()*90,
+        vx: (rand()-0.5)*2.2, vy: (rand()-0.5)*2.2,
+        color: palette[Math.floor(rand()*palette.length)]
+      }));
+
+      let stream;
+      try{ stream = canvas.captureStream(30); }
+      catch(e){ reject(new Error('This browser can\'t record a canvas stream.')); return; }
+
+      let recorder;
+      try{ recorder = new MediaRecorder(stream, { mimeType: 'video/webm' }); }
+      catch(e){ reject(new Error('This browser can\'t record video (MediaRecorder unavailable).')); return; }
+
+      const chunks = [];
+      recorder.ondataavailable = e => { if(e.data && e.data.size) chunks.push(e.data); };
+      recorder.onstop = () => resolve(URL.createObjectURL(new Blob(chunks, { type: 'video/webm' })));
+      recorder.onerror = () => reject(new Error('Recording the placeholder animation failed.'));
+
+      let frame = 0;
+      const totalFrames = 30 * 3; // ~3 seconds at 30fps
+      function draw(){
+        ctx.fillStyle = '#0d0d12';
+        ctx.fillRect(0,0,size,size);
+        blobs.forEach(b=>{
+          b.x += b.vx; b.y += b.vy;
+          if(b.x < -b.r || b.x > size+b.r) b.vx *= -1;
+          if(b.y < -b.r || b.y > size+b.r) b.vy *= -1;
+          ctx.globalAlpha = 0.5;
+          ctx.fillStyle = b.color;
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, b.r, 0, Math.PI*2);
+          ctx.fill();
+        });
+        ctx.globalAlpha = 1;
+        frame++;
+        if(frame < totalFrames){
+          requestAnimationFrame(draw);
+        } else {
+          recorder.stop();
+        }
+      }
+      recorder.start();
+      draw();
+    });
+  }
+
+  /* Orchestrates the "Generate a video" flow: try the real Veo API if a
+     Gemini key is set, otherwise (or on failure) fall back to the local
+     placeholder animation, mirroring how image generation behaves. */
+  function deliverVideoReply(prompt, deliverReply){
+    if(apiSettings.gemini.key){
+      generateVideoViaVeo(prompt)
+        .then(url => deliverReply('Here\'s your video for "' + prompt + '":', false, null, url))
+        .catch(err => {
+          generateDemoVideo(prompt)
+            .then(url => deliverReply(
+              "⚠️ Couldn't reach the Veo video API (" + err.message + "), so here's a local placeholder animation instead — real video generation needs a Gemini key with Veo access:",
+              false, null, url))
+            .catch(demoErr => deliverReply("⚠️ Couldn't generate a video: " + demoErr.message));
+        });
+    } else {
+      generateDemoVideo(prompt)
+        .then(url => deliverReply(
+          "Here's a demo animation for \"" + prompt + "\" (this is a locally-drawn placeholder, not real video generation — add a Gemini API key with Veo access in API settings for real AI-generated video):",
+          false, null, url))
+        .catch(err => deliverReply("⚠️ Couldn't generate a video: " + err.message));
+    }
+  }
+
+
+  /* ---------------- Demo code generator ----------------
+     Used as a fallback when no API key is set. Picks a small canned
+     snippet based on keywords in the request and returns it as a
+     fenced code block, which renderRichText/appendCodeBlock already
+     knows how to render with syntax coloring + a copy button. */
+  function generateCodeReply(userText){
+    const t = (userText || '').trim().toLowerCase();
+
+    const SNIPPETS = [
+      { test: /python/, lang:'python', label:'Python', code:
+`def greet(name):
+    """Return a friendly greeting."""
+    return f"Hello, {name}! Welcome to Aura."
+
+if __name__ == "__main__":
+    print(greet("world"))` },
+      { test: /react|jsx|component/, lang:'jsx', label:'React', code:
+`function Greeting({ name = "world" }) {
+  return (
+    <div className="greeting">
+      <h1>Hello, {name}!</h1>
+      <p>Welcome to Aura.</p>
+    </div>
+  );
+}
+
+export default Greeting;` },
+      { test: /html|webpage|web page/, lang:'html', label:'HTML', code:
+`<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Hello</title></head>
+<body>
+  <h1>Hello, world!</h1>
+  <p>Welcome to Aura.</p>
+</body>
+</html>` },
+      { test: /css|style|button/, lang:'css', label:'CSS', code:
+`.btn {
+  padding: 10px 20px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(120deg, #4c8dff, #a06cf5 55%, #ff6fa3);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn:hover { opacity: .9; }` },
+      { test: /sql|database|query/, lang:'sql', label:'SQL', code:
+`SELECT u.name, COUNT(o.id) AS order_count
+FROM users u
+LEFT JOIN orders o ON o.user_id = u.id
+GROUP BY u.name
+ORDER BY order_count DESC
+LIMIT 10;` },
+      { test: /sort|algorithm/, lang:'javascript', label:'JavaScript', code:
+`function quickSort(arr) {
+  if (arr.length <= 1) return arr;
+  const [pivot, ...rest] = arr;
+  const left = rest.filter(n => n < pivot);
+  const right = rest.filter(n => n >= pivot);
+  return [...quickSort(left), pivot, ...quickSort(right)];
+}` },
+      { test: /.*/, lang:'javascript', label:'JavaScript', code:
+`function sum(a, b) {
+  return a + b;
+}
+
+console.log(sum(2, 3)); // 5` }
+    ];
+
+    const match = SNIPPETS.find(s => s.test.test(t));
+    const intro = "Here's a " + match.label + " snippet based on your request. " +
+      "This demo interface returns a small canned example locally — connect an API key in API settings to have Aura actually write custom code for you.";
+    return intro + "\n\n```" + match.lang + "\n" + match.code + "\n```";
+  }
+
+  /* ---------------- Demo response engine ----------------
+     Used as a fallback when no API key is set in API settings. */
+  function generateReply(userText){
+    const t = userText.trim().toLowerCase();
+    if(!t) return "I didn't quite catch that, sir — could you repeat that?";
+
+    // Time-of-day greetings: Aura answers with the *actual* current
+    // time of day rather than just echoing back whatever the user said,
+    // the way the films' Aura reports real status rather than parroting.
+    if(/\bgood\s*(morning|afternoon|evening|night)\b/.test(t)){
+      const hour = new Date().getHours();
+      const actual = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : hour < 21 ? 'evening' : 'night';
+      const said = t.match(/\bgood\s*(morning|afternoon|evening|night)\b/)[1];
+      const timeStr = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+      return said === actual
+        ? "Good " + actual + " to you as well, sir. It's currently " + timeStr + "."
+        : "Good " + actual + ", sir — it's currently " + timeStr + ", so technically it's " + actual + " here, not " + said + ". But the sentiment's appreciated.";
+    }
+
+    // "Aura, open a python exe" (or any program/app/exe) — a browser
+    // tab has no ability to launch programs on the user's machine, so
+    // Aura reports that plainly rather than pretending to comply.
+    if(/\bopen\b/.test(t) && /(\.exe\b|\bexe\b|python|program|application|\bapp\b|notepad|terminal|browser)/.test(t)){
+      return "I'm unable to do that, sir — I'm running inside a browser tab, which has no permission to launch programs or files on your machine. That would need a native assistant with system access (for example, a local script or a desktop automation tool), not a webpage.";
+    }
+
+    // "Aura, message <someone> <something>" — no messaging service is
+    // connected in this demo, so Aura logs it back to the user rather
+    // than pretending to deliver it.
+    if(/\b(message|tell|send (a )?message to)\b/.test(t) && userText.trim().length > 10){
+      return "Noted, sir, but I've no messaging service connected from inside this browser, so I can't actually deliver that. Here's exactly what you asked me to pass along, for your own records: “" + userText.trim() + "” — connect a messaging API (e.g. WhatsApp, SMS, or email) in API settings and I can wire up real delivery.";
+    }
+
+    // "Aura, generate a code" said directly in conversation (as opposed
+    // to using the + menu's "Generate code" toggle) — route straight to
+    // the same code-reply engine.
+    if(/(generate|write|give me|make)\s+(a\s+|me\s+a\s+|some\s+)?code\b/.test(t)){
+      return generateCodeReply(userText);
+    }
+
+    if(/^(hi|hello|hey)\b/.test(t)){
+      return companionMode ? "Good day, sir. Systems nominal — how may I assist?" : "Hello! How can I help you today?";
+    }
+    if(t.includes('your name')){
+      return companionMode
+        ? "I'm Aura, sir — your AI assistant, built into this demo interface and on standby whenever this page is open."
+        : "I'm Aura, a demo AI chat interface built in your browser.";
+    }
+    // "Who created you / who is your creator / who made you / who developed you"
+    if(/who\s*(is|'s)?\s*(your\s+)?(creator|developer|maker|owner|founder)|who\s+(made|built|created|developed|designed)\s+you/.test(t)){
+      return companionMode
+        ? "I was created by Mr. Dhyan Panchal, sir — he designed and built Aura AI Chat."
+        : "Aura AI Chat was created by Mr. Dhyan Panchal.";
+    }
+    // "Who is your manager / who is the project manager / who is the PM"
+    if(/who\s*(is|'s)?\s*(your\s+)?(manager|project\s*manager|pm\b)/.test(t)){
+      return companionMode
+        ? "Mr. Kenil Thakkar is the manager, sir."
+        : "The manager of Aura AI Chat is Mr. Kenil Thakkar.";
+    }
+    if(companionMode && /(available|online|24\s*\/?\s*7|all day|every ?day|around the clock)/.test(t)){
+      return "Correct, sir — I run entirely within this browser tab, so I'm on standby 24/7. Just say “Aura” whenever you need me.";
+    }
+    if(/weather|temperature outside|forecast|is it raining|umbrella/.test(t)){
+      return weatherReplyText();
+    }
+    if(t.includes('joke')) return "Why did the developer go broke? Because they used up all their cache.";
+    if(t.includes('poem') && t.includes('ocean')){
+      return "Endless blue beneath the sky,\nWaves that breathe and never tire,\nSecrets kept where sunlight dies,\nAnd the moon pulls tides like fire.";
+    }
+    if(t.includes('quantum')){
+      return "Quantum computing uses qubits, which — unlike classical bits — can exist in a mix of 0 and 1 at once. This lets certain problems, like simulating molecules or searching large datasets, be tackled far more efficiently than with classical bits alone.";
+    }
+    if(t.includes('trip') || t.includes('weekend')){
+      return "Here are 5 quick weekend trip ideas:\n1. A nearby mountain town for hiking and cool air\n2. A coastal city for a beach + seafood weekend\n3. A short train trip to explore a historic old town\n4. A lakeside cabin for a slow, relaxing reset\n5. A road trip looping through small local villages";
+    }
+    if(t.includes('meal') || t.includes('healthy')){
+      return "A simple weekly meal prep base:\n- Protein: grilled chicken, tofu, or lentils\n- Carbs: brown rice or quinoa\n- Veggies: roasted broccoli, peppers, spinach\n- Batch-cook Sunday, portion into 5 containers, mix sauces to keep it interesting through the week.";
+    }
+    if(t.includes('fifa') || t.includes('world cup')){
+      return "⚽ This demo interface can't pull live sports data on its own. Add an API key in API settings — Web search is already switched on for you — and I'll pull real, up-to-the-minute FIFA World Cup scores, fixtures, standings and news for you.";
+    }
+    return "That's an interesting question about \"" + userText.trim() + "\". This demo interface echoes and reasons over your input locally — connect it to a real model API to get fully generated answers.";
+  }
+
+  /* ---------------- App launcher ----------------
+     A browser page can't reach into your OS and open/control a native
+     app directly — that's a security boundary every browser enforces.
+     What it *can* do is navigate to a URL or an app's own "deep link"
+     (e.g. https://wa.me for WhatsApp, mailto: for Mail). If the native
+     app is installed, the OS/browser commonly hands off to it
+     automatically — the same mechanism "Open in App" buttons use on
+     any website. Once launched, Aura has no further control over it;
+     it can only be the launcher, not a remote control. */
+  const APP_LAUNCHER = [
+    { keys: ['whatsapp'], label: 'WhatsApp', url: 'https://wa.me/' },
+    { keys: ['gmail', 'email', 'mail'], label: 'Gmail', url: 'https://mail.google.com' },
+    { keys: ['youtube'], label: 'YouTube', url: 'https://youtube.com' },
+    { keys: ['maps', 'google maps', 'नक्शा'], label: 'Google Maps', url: 'https://maps.google.com' },
+    { keys: ['spotify'], label: 'Spotify', url: 'https://open.spotify.com' },
+    { keys: ['calendar'], label: 'Google Calendar', url: 'https://calendar.google.com' },
+    { keys: ['drive', 'google drive'], label: 'Google Drive', url: 'https://drive.google.com' },
+    { keys: ['photos', 'google photos'], label: 'Google Photos', url: 'https://photos.google.com' },
+    { keys: ['twitter', 'x'], label: 'X (Twitter)', url: 'https://x.com' },
+    { keys: ['instagram'], label: 'Instagram', url: 'https://instagram.com' },
+    { keys: ['facebook'], label: 'Facebook', url: 'https://facebook.com' },
+    { keys: ['telegram'], label: 'Telegram', url: 'https://web.telegram.org' },
+    { keys: ['netflix'], label: 'Netflix', url: 'https://netflix.com' },
+    { keys: ['amazon'], label: 'Amazon', url: 'https://amazon.in' },
+    { keys: ['notes', 'google keep', 'keep'], label: 'Google Keep', url: 'https://keep.google.com' },
+    { keys: ['translate'], label: 'Google Translate', url: 'https://translate.google.com' }
+  ];
+
+  /* Recognizes "Aura, open <app>" (English), "ऑरा, <app> खोलो" (Hindi),
+     or "ઓરા, <app> ખોલો" (Gujarati).
+     Returns { action:'open', label, url } or { action:'open-unknown', query } or null. */
+  function parseOpenAppCommand(rawText){
+    const s = (rawText || '').toLowerCase();
+    const hasWakeWord = /\baura\b/.test(s) || /ऑरा/.test(rawText || '') || /ઓરા/.test(rawText || '');
+    if(!hasWakeWord) return null;
+
+    // WhatsApp "send message" variant gets special handling: it can prefill
+    // the message text so all you (or whoever you hand the phone to) has to
+    // do is tap a contact and hit Send. Recognizes phrasing like:
+    //   "Aura, open WhatsApp send message to someone Hello"
+    //   "Aura, open WhatsApp send message "Hello" to Rohan"
+    //   "Aura, whatsapp message saying I'm on my way"
+    if(/whatsapp/.test(s) && /(send\s+message|send\s+a\s+message|message\s+saying|message\s+to)/.test(s)){
+      let message = '';
+      const quoted = rawText.match(/["“']([^"”']+)["”']/);
+      if(quoted){
+        message = quoted[1];
+      } else {
+        // No quotes: take everything after "message" (and an optional
+        // "to <name>"/"saying" in between) as the message text.
+        const m = s.match(/message\s+(?:saying\s+)?(?:to\s+\S+\s+)?(.+)/);
+        if(m) message = m[1].trim();
+      }
+      // If a phone number appears in the command, target that chat directly.
+      const phoneMatch = rawText.match(/\+?\d[\d\s-]{7,}\d/);
+      const phone = phoneMatch ? phoneMatch[0].replace(/[\s-]/g, '') : '';
+      const url = phone
+        ? 'https://wa.me/' + phone.replace(/^\+/, '') + (message ? '?text=' + encodeURIComponent(message) : '')
+        : 'https://api.whatsapp.com/send' + (message ? '?text=' + encodeURIComponent(message) : '');
+      return { action: 'whatsapp-send', message, phone, url };
+    }
+
+    const openEn = s.match(/\bopen\s+([a-z0-9 ]+)/);
+    const openHi = (rawText || '').match(/([\u0900-\u097F0-9a-zA-Z ]+?)\s*खोलो/);
+    const openGu = (rawText || '').match(/([\u0A80-\u0AFF0-9a-zA-Z ]+?)\s*ખોલો/);
+    const appPhrase = (openEn ? openEn[1] : (openHi ? openHi[1] : (openGu ? openGu[1] : ''))).trim().toLowerCase();
+    if(!appPhrase) return null;
+    for(const app of APP_LAUNCHER){
+      if(app.keys.some(k => appPhrase.includes(k.toLowerCase()) || k.toLowerCase().includes(appPhrase))){
+        return { action:'open', label: app.label, url: app.url };
+      }
+    }
+    return { action:'open-unknown', query: appPhrase };
+  }
+
+  function launchApp(url){
+    // Opens in a new tab; if a matching native app is installed and the
+    // browser/OS supports the handoff, it may take over from there.
+    window.open(url, '_blank', 'noopener');
+  }
+
+  /* ---------------- Aura companion persona + voice commands ----------------
+     Companion mode switches Aura into a warmer/caring, Hinglish-flavored persona
+     that's framed as being available 24/7. Two voice (or typed) commands are
+     recognized: "Aura, go to sleep" / "Aura, wake up" — these don't get sent
+     to the model, they toggle a lightweight "sleeping" UI state instead. */
+  function personaName(){ return 'Aura'; }
+
+  function checkVoiceCommand(rawText){
+    const s = (rawText || '').toLowerCase();
+    // Recognize the wake word in English ("Aura"), Hindi/Devanagari
+    // ("ऑरा"), or Gujarati ("ઓરા"), so this works whether the mic
+    // is set to English, Hindi, or Gujarati.
+    const hasWakeWord = /\baura\b/.test(s) || /ऑरा/.test(rawText || '') || /ઓરા/.test(rawText || '');
+    if(!hasWakeWord) return null;
+    // English sleep/wake phrases
+    if(/(go(ing)?\s*to\s*sleep|sleep\s*time|time\s*to\s*sleep|good\s*night)/.test(s)) return 'sleep';
+    if(/(wake\s*up|good\s*morning|are\s*you\s*(there|awake)|you\s*(there|awake))/.test(s)) return 'wake';
+    // Hindi sleep/wake phrases (e.g. "ऑरा, सो जाओ" / "ऑरा, उठ जाओ")
+    if(/(सो\s*जाओ|सोने\s*का\s*समय|शुभ\s*रात्रि|गुड\s*नाइट)/.test(rawText || '')) return 'sleep';
+    if(/(उठ\s*जाओ|जाग\s*जाओ|सुप्रभात|गुड\s*मॉर्निंग|क्या\s*तुम\s*(हो|जगे\s*हो))/.test(rawText || '')) return 'wake';
+    // Gujarati sleep/wake phrases (e.g. "ઓરા, ઊંઘી જાઓ" / "ઓરા, ઉઠી જાઓ")
+    if(/(ઊંઘી\s*જાઓ|સૂવાનો\s*સમય|શુભ\s*રાત્રિ|ગુડ\s*નાઇટ)/.test(rawText || '')) return 'sleep';
+    if(/(ઉઠી\s*જાઓ|જાગી\s*જાઓ|સુપ્રભાત|ગુડ\s*મોર્નિંગ|શું\s*તમે\s*(છો|જાગો\s*છો))/.test(rawText || '')) return 'wake';
+    return null;
+  }
+
+  function applyCompanionMode(){
+    if(companionModeToggle) companionModeToggle.classList.toggle('on', companionMode);
+    if(modelNameText) modelNameText.textContent = personaName();
+    if(modelSubText) modelSubText.textContent = sleepMode ? 'standby' : (companionMode ? 'online · standby' : '2.0');
+    promptInput.placeholder = 'Message ' + personaName() + ', or tap the mic to speak...';
+    refreshDisclaimer();
+    if(companionMode && voiceStyleSelect.value !== 'sara'){
+      voiceStyleSelect.value = 'sara';
+      voiceStyleSelect.dispatchEvent(new Event('change'));
+    }
+  }
+
+  function refreshDisclaimer(){
+    if(!disclaimerEl) return;
+    const settings = currentProviderSettings();
+    const label = PROVIDER_LABELS[apiSettings.provider];
+    if(settings.key){
+      disclaimerEl.textContent = companionMode
+        ? 'Aura is connected to the ' + label + ' API and on standby 24/7.'
+        : 'Aura is connected to the ' + label + ' API. Responses are generated live.';
+    } else {
+      disclaimerEl.textContent = companionMode
+        ? 'Aura is a demo assistant interface, on standby 24/7 — responses are generated locally in your browser.'
+        : 'Aura is a demo interface — responses are generated locally in your browser.';
+    }
+  }
+
+  if(companionModeToggle){
+    companionModeToggle.addEventListener('click', ()=>{
+      companionMode = !companionMode;
+      try{ localStorage.setItem('aura_companion_mode', companionMode ? '1' : '0'); }catch(e){}
+      applyCompanionMode();
+    });
+  }
+
+  function sendMessage(text){
+    text = text.trim();
+    const openCmd = parseOpenAppCommand(text);
+    const voiceCmd = openCmd ? null : checkVoiceCommand(text);
+    const attachments = pendingAttachments.slice();
+    if(!text && !attachments.length) return;
+    if(!getActiveChat()) newChat();
+    const chat = getActiveChat();
+    if(chat.messages.length === 0){
+      const titleSrc = text || (imageGenMode ? 'Image generation' : videoGenMode ? 'Video generation' : codeGenMode ? 'Code generation' : worldCupMode ? 'FIFA World Cup' : learnMode ? 'Learn' : writeMode ? 'Write' : lifeMode ? 'Life stuff' : 'Attachment');
+      chat.title = titleSrc.length > 34 ? titleSrc.slice(0,34)+'…' : titleSrc;
+      renderHistory();
+    }
+
+    const wasImageGen = imageGenMode;
+    const wasVideoGen = videoGenMode;
+    const wasCodeGen = codeGenMode;
+    chat.messages.push({role:'user', text, attachments});
+    appendBubble('user', text, false, attachments);
+    promptInput.value = '';
+    pendingAttachments = [];
+    renderAttachPreview();
+    resetAllModes();
+    updateQuickChips();
+    promptInput.placeholder = 'Message ' + personaName() + ', or tap the mic to speak...';
+    autoGrow();
+    updateSendState();
+    showTyping();
+
+    // Creator/ownership questions ("who made you", "who is your creator",
+    // "who developed you", etc.) always get this direct, factual answer —
+    // regardless of whether a real API key is configured — instead of
+    // being sent to an external model.
+    const creatorMatch = !wasImageGen && !wasVideoGen && !wasCodeGen &&
+      /who\s*(is|'s)?\s*(your\s+)?(creator|developer|maker|owner|founder)|who\s+(made|built|created|developed|designed)\s+you/i.test(text);
+    const managerMatch = !wasImageGen && !wasVideoGen && !wasCodeGen &&
+      /who\s*(is|'s)?\s*(your\s+)?(manager|project\s*manager|pm\b)/i.test(text);
+    if(creatorMatch){
+      setTimeout(()=>{
+        deliverReply(
+          companionMode
+            ? "I was created by Mr. Dhyan Panchal, sir — he designed and built Aura AI Chat."
+            : "Aura AI Chat was created by Mr. Dhyan Panchal.",
+          false
+        );
+      }, 350);
+      return;
+    }
+    if(managerMatch){
+      setTimeout(()=>{
+        deliverReply(
+          companionMode
+            ? "Mr. Kenil Thakkar is the manager, sir."
+            : "The manager of Aura AI Chat is Mr. Kenil Thakkar.",
+          false
+        );
+      }, 350);
+      return;
+    }
+
+    function deliverReply(replyText, searchedWeb, imageDataUrl, videoDataUrl){
+      hideTyping();
+      const replyAttachments = imageDataUrl ? [{ kind:'image', dataUrl: imageDataUrl, name:'generated-image.png' }]
+        : videoDataUrl ? [{ kind:'video', dataUrl: videoDataUrl, name:'generated-video.webm' }]
+        : undefined;
+      chat.messages.push({role:'ai', text: replyText, searchedWeb, attachments: replyAttachments});
+      const replyBubble = appendBubble('ai', replyText, false, replyAttachments, searchedWeb);
+      if(voiceSettings.autoSpeak && replyText){
+        const av = replyBubble.closest('.msg-row').querySelector('.msg-avatar');
+        speak(replyText, replyBubble, av);
+      }
+    }
+
+    if(openCmd){
+      setTimeout(()=>{
+        if(openCmd.action === 'whatsapp-send'){
+          launchApp(openCmd.url);
+          const who = openCmd.phone ? ('to ' + openCmd.phone) : 'and let you pick who to send it to';
+          deliverReply(
+            (companionMode ? "Opening WhatsApp " : "Opening WhatsApp ") + who + " with your message" +
+            (openCmd.message ? (' — "' + openCmd.message + '"') : '') + " already typed in. " +
+            "One thing I can't do: actually press Send for you. WhatsApp itself requires a real tap on the Send button before a message goes out — that's WhatsApp's own anti-spam rule, on top of the browser not being able to control another app's UI. So you (or whoever's holding the phone) will need to tap Send once it opens.",
+            false);
+        } else if(openCmd.action === 'open'){
+          launchApp(openCmd.url);
+          deliverReply((companionMode ? "Opening " + openCmd.label + " for you, sir. " : "Opening " + openCmd.label + ". ") +
+            "Heads up: I can only launch it in a new tab — I can't click around or send anything inside it for you, since browsers don't allow a page to control other apps.", false);
+        } else {
+          deliverReply("I didn't recognize \"" + openCmd.query + "\" as an app I know how to open. I can currently launch: " +
+            APP_LAUNCHER.map(a=>a.label).join(', ') + ". Try \"Aura, open " + APP_LAUNCHER[0].label + "\".", false);
+        }
+      }, 350);
+      return;
+    }
+
+    if(voiceCmd){
+      setTimeout(()=>{
+        if(voiceCmd === 'sleep'){
+          sleepMode = true;
+          if(recognizing && recognition) recognition.stop();
+          if(modelSubText) modelSubText.textContent = 'standby';
+          deliverReply(companionMode
+            ? "Powering down to standby, sir. Say “Aura, wake up” anytime, or tap the mic, and I'll be right here."
+            : "Going to standby now. Say “Aura, wake up” or tap the mic to bring me back.", false);
+        } else {
+          sleepMode = false;
+          if(modelSubText) modelSubText.textContent = companionMode ? 'online · standby' : '2.0';
+          deliverReply(companionMode
+            ? "Back online, sir. All systems nominal."
+            : "I'm awake and listening again.", false);
+        }
+      }, 450);
+      return;
+    }
+
+    if(wasImageGen && text){
+      if(apiSettings.gemini.key){
+        generateImage(text)
+          .then(res => deliverReply(res.caption || 'Here\'s what I generated:', false, res.dataUrl))
+          .catch(err => {
+            // Real API call failed (quota exceeded, rate limit, invalid/expired
+            // key, model unavailable, etc.) — fall back to the local placeholder
+            // instead of leaving the user stuck with a dead-end error, mirroring
+            // how video generation already recovers from a failed Veo call.
+            const demoUrl = generateDemoImage(text);
+            deliverReply(
+              "⚠️ Couldn't reach the Gemini image API (" + err.message + "), so here's a local placeholder illustration instead — " +
+              "this is usually a quota/billing limit on your Google account rather than a problem with this app; check " +
+              "https://ai.dev/rate-limit or your Google AI Studio billing settings:",
+              false, demoUrl);
+          });
+      } else {
+        // No Gemini key yet — fall back to a local, deterministic
+        // generative-art placeholder so the feature still works offline.
+        const delay = 500 + Math.min(1200, text.length * 12);
+        setTimeout(()=>{
+          const demoUrl = generateDemoImage(text);
+          deliverReply("Here's a demo illustration for \"" + text + "\" (this is a locally-drawn placeholder — add a Gemini API key in API settings to get real AI-generated images):", false, demoUrl);
+        }, delay);
+      }
+      return;
+    }
+
+    if(wasVideoGen && text){
+      deliverVideoReply(text, deliverReply);
+      return;
+    }
+
+    if(wasCodeGen && text){
+      if(currentProviderSettings().key){
+        const codePrompt = 'Write code for the following request. Respond with a short intro sentence, then a single fenced code block (```language ... ```) containing complete, runnable code.\n\nRequest: ' + text;
+        callProviderAPI(codePrompt, null, null, null, attachments)
+          .then(res => deliverReply(res.text, res.searchedWeb))
+          .catch(err => deliverReply("⚠️ API error: " + err.message + "\n\nCheck your API key in API settings, or clear it to fall back to demo responses."));
+      } else {
+        const delay = 500 + Math.min(1400, text.length * 18);
+        setTimeout(()=> deliverReply(generateCodeReply(text), false), delay);
+      }
+      return;
+    }
+
+    if(currentProviderSettings().key){
+      callProviderAPI(text, null, null, null, attachments)
+        .then(res => deliverReply(res.text, res.searchedWeb))
+        .catch(err => deliverReply("⚠️ API error: " + err.message + "\n\nCheck your API key in API settings, or clear it to fall back to demo responses."));
+    } else {
+      const delay = 500 + Math.min(1400, text.length * 18);
+      setTimeout(()=>{
+        const reply = attachments.length
+          ? "I can see you've attached " + attachments.length + " file(s). Add an API key in API settings so I can actually read images and files and respond with a real generated answer."
+          : generateReply(text);
+        deliverReply(reply, false);
+      }, delay);
+    }
+  }
+
+  function autoGrow(){
+    promptInput.style.height = 'auto';
+    promptInput.style.height = Math.min(promptInput.scrollHeight, 160) + 'px';
+  }
+  function updateSendState(){
+    sendBtn.disabled = promptInput.value.trim().length === 0 && pendingAttachments.length === 0;
+  }
+
+  /* ---------------- Events: chat ---------------- */
+  newChatBtn.addEventListener('click', newChat);
+  function setSidebarOpen(open){
+    sidebar.classList.toggle('collapsed', !open);
+    if(isMobile()){
+      sidebarBackdrop.classList.toggle('show', open);
+    } else {
+      sidebarBackdrop.classList.remove('show');
+    }
+  }
+  sidebarToggle.addEventListener('click', ()=> setSidebarOpen(sidebar.classList.contains('collapsed')));
+  sidebarBackdrop.addEventListener('click', ()=> setSidebarOpen(false));
+  // Start collapsed on mobile so the chat is visible first; open on desktop.
+  setSidebarOpen(!isMobile());
+  window.addEventListener('resize', ()=>{
+    if(!isMobile()) sidebarBackdrop.classList.remove('show');
+  });
+  sendBtn.addEventListener('click', ()=> sendMessage(promptInput.value));
+  promptInput.addEventListener('input', ()=>{ autoGrow(); updateSendState(); });
+  promptInput.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter' && !e.shiftKey){
+      e.preventDefault();
+      sendMessage(promptInput.value);
+    }
+  });
+  document.querySelectorAll('.suggestion-card').forEach(card=>{
+    card.addEventListener('click', ()=>{
+      const mode = card.dataset.mode;
+      if(mode === 'worldcup'){
+        resetAllModes();
+        worldCupMode = true;
+        webSearchEnabled = true;
+        webSearchMenuLabel.textContent = 'Web search: on';
+      } else if(mode === 'learn'){
+        resetAllModes();
+        learnMode = true;
+      } else if(mode === 'write'){
+        resetAllModes();
+        writeMode = true;
+      } else if(mode === 'life'){
+        resetAllModes();
+        lifeMode = true;
+      }
+      sendMessage(card.dataset.prompt);
+    });
+  });
+
+  /* ---------------- Theme ---------------- */
+  themeBtn.addEventListener('click', ()=>{
+    isDark = !isDark;
+    document.body.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    themeLabel.textContent = isDark ? 'Light theme' : 'Dark theme';
+  });
+
+  /* ---------------- Voice settings modal ---------------- */
+  function openModal(){ overlay.classList.add('open'); }
+  function closeModalFn(){ overlay.classList.remove('open'); }
+  voiceSettingsBtn.addEventListener('click', openModal);
+  avatarBtn.addEventListener('click', openModal);
+  closeModal.addEventListener('click', closeModalFn);
+  overlay.addEventListener('click', (e)=>{ if(e.target === overlay) closeModalFn(); });
+
+  /* ---------------- System check ---------------- */
+  function renderCheckRows(rows){
+    checkList.innerHTML = '';
+    rows.forEach(r=>{
+      const row = document.createElement('div');
+      row.className = 'check-row';
+      const left = document.createElement('div');
+      const label = document.createElement('div');
+      label.className = 'check-label';
+      label.textContent = r.label;
+      left.appendChild(label);
+      if(r.detail){
+        const detail = document.createElement('div');
+        detail.className = 'check-detail';
+        detail.textContent = r.detail;
+        left.appendChild(detail);
+      }
+      const status = document.createElement('div');
+      status.className = 'check-status ' + r.status;
+      status.innerHTML = '<span class="dot"></span><span>' + r.text + '</span>';
+      row.appendChild(left);
+      row.appendChild(status);
+      checkList.appendChild(row);
+    });
+  }
+
+  function staticChecks(){
+    const rows = [];
+    rows.push({
+      label: 'Internet connection',
+      status: navigator.onLine ? 'ok' : 'bad',
+      text: navigator.onLine ? 'Online' : 'Offline'
+    });
+    let storageOk = false;
+    try{ localStorage.setItem('__aura_test__','1'); localStorage.removeItem('__aura_test__'); storageOk = true; }catch(e){}
+    rows.push({
+      label: 'Local storage',
+      detail: 'Needed to save API keys and settings on this device',
+      status: storageOk ? 'ok' : 'bad',
+      text: storageOk ? 'Available' : 'Blocked'
+    });
+    const srSupported = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+    const recorderSupported = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
+    rows.push({
+      label: 'Speech-to-text (mic input)',
+      detail: srSupported
+        ? 'Live browser voice recognition'
+        : (recorderSupported
+            ? 'Live recognition isn\'t available on this browser (this is normal on iPhone/iPad/Safari) — falling back to record + transcribe. Add a Gemini API key in API settings to enable it.'
+            : 'Not supported and no fallback available on this device/browser.'),
+      status: srSupported ? 'ok' : (recorderSupported ? 'warn' : 'bad'),
+      text: srSupported ? 'Supported' : (recorderSupported ? 'Fallback mode' : 'Not supported')
+    });
+    const ttsSupported = 'speechSynthesis' in window;
+    rows.push({
+      label: 'Text-to-speech (read aloud)',
+      detail: ttsSupported ? (availableVoices.length + ' voice(s) loaded') : '',
+      status: ttsSupported ? 'ok' : 'bad',
+      text: ttsSupported ? 'Supported' : 'Not supported in this browser'
+    });
+    const camSupported = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+    rows.push({
+      label: 'Camera API',
+      detail: 'Browser support only — tap "Run check" to test actual access',
+      status: camSupported ? 'warn' : 'bad',
+      text: camSupported ? 'Supported' : 'Not supported'
+    });
+    const clipSupported = !!(navigator.clipboard && navigator.clipboard.writeText);
+    rows.push({
+      label: 'Clipboard (copy button)',
+      status: clipSupported ? 'ok' : 'bad',
+      text: clipSupported ? 'Supported' : 'Not supported in this browser'
+    });
+    rows.push({
+      label: 'Anthropic API key',
+      status: apiSettings.anthropic.key ? 'ok' : 'warn',
+      text: apiSettings.anthropic.key ? 'Saved' : 'Not saved'
+    });
+    rows.push({
+      label: 'Gemini API key',
+      detail: 'Required for image generation and Gemini chat',
+      status: apiSettings.gemini.key ? 'ok' : 'warn',
+      text: apiSettings.gemini.key ? 'Saved' : 'Not saved'
+    });
+    rows.push({
+      label: 'Layout mode',
+      status: 'ok',
+      text: isMobile() ? 'Mobile' : 'Desktop'
+    });
+    return rows;
+  }
+
+  async function runFullSystemCheck(){
+    const rows = staticChecks();
+    renderCheckRows(rows);
+    runSystemCheckBtn.disabled = true;
+    runSystemCheckBtn.textContent = 'Checking camera & mic…';
+
+    const camRow = rows.find(r => r.label === 'Camera API');
+    if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
+      try{
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        stream.getTracks().forEach(t=>t.stop());
+        camRow.status = 'ok'; camRow.text = 'Access granted'; camRow.detail = '';
+      }catch(e){
+        camRow.status = 'bad';
+        camRow.text = e.name === 'NotAllowedError' ? 'Permission denied' : 'Unavailable (' + e.name + ')';
+        camRow.detail = '';
+      }
+    }
+    renderCheckRows(rows);
+
+    const micRow = { label: 'Microphone access', status:'warn', text:'Not tested', detail:'' };
+    if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
+      try{
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach(t=>t.stop());
+        micRow.status = 'ok'; micRow.text = 'Access granted';
+      }catch(e){
+        micRow.status = 'bad';
+        micRow.text = e.name === 'NotAllowedError' ? 'Permission denied' : 'Unavailable (' + e.name + ')';
+      }
+    } else {
+      micRow.status = 'bad'; micRow.text = 'Not supported';
+    }
+    rows.splice(rows.findIndex(r=>r.label==='Speech-to-text (mic input)')+1, 0, micRow);
+    renderCheckRows(rows);
+
+    runSystemCheckBtn.disabled = false;
+    runSystemCheckBtn.textContent = '🔍 Run check again';
+  }
+
+  function openSystemCheck(){
+    renderCheckRows(staticChecks());
+    runSystemCheckBtn.textContent = '🔍 Run check';
+    systemCheckOverlay.classList.add('open');
+    if(isMobile()) setSidebarOpen(false);
+  }
+  function closeSystemCheckFn(){ systemCheckOverlay.classList.remove('open'); }
+  systemCheckBtn.addEventListener('click', openSystemCheck);
+  closeSystemCheck.addEventListener('click', closeSystemCheckFn);
+  systemCheckOverlay.addEventListener('click', (e)=>{ if(e.target === systemCheckOverlay) closeSystemCheckFn(); });
+
+  function openAbout(){ aboutOverlay.classList.add('open'); if(isMobile()) setSidebarOpen(false); }
+  function closeAboutFn(){ aboutOverlay.classList.remove('open'); }
+  aboutBtn.addEventListener('click', openAbout);
+  closeAbout.addEventListener('click', closeAboutFn);
+  aboutOverlay.addEventListener('click', (e)=>{ if(e.target === aboutOverlay) closeAboutFn(); });
+  runSystemCheckBtn.addEventListener('click', runFullSystemCheck);
+
+  autoSpeakToggle.addEventListener('click', ()=>{
+    voiceSettings.autoSpeak = !voiceSettings.autoSpeak;
+    autoSpeakToggle.classList.toggle('on', voiceSettings.autoSpeak);
+  });
+  autoSendToggle.addEventListener('click', ()=>{
+    voiceSettings.autoSend = !voiceSettings.autoSend;
+    autoSendToggle.classList.toggle('on', voiceSettings.autoSend);
+  });
+  autoSendToggle.classList.toggle('on', voiceSettings.autoSend);
+
+  rateRange.addEventListener('input', ()=>{
+    voiceSettings.rate = parseFloat(rateRange.value);
+    rateVal.textContent = voiceSettings.rate.toFixed(1) + 'x';
+  });
+  pitchRange.addEventListener('input', ()=>{
+    voiceSettings.pitch = parseFloat(pitchRange.value);
+    pitchVal.textContent = voiceSettings.pitch.toFixed(1);
+  });
+  volRange.addEventListener('input', ()=>{
+    voiceSettings.volume = parseFloat(volRange.value);
+    volVal.textContent = Math.round(voiceSettings.volume*100) + '%';
+  });
+  voiceSelect.addEventListener('change', ()=>{
+    voiceSettings.voiceURI = voiceSelect.value;
+  });
+  voiceStyleSelect.addEventListener('change', ()=>{
+    voiceSettings.style = voiceStyleSelect.value;
+    const preset = VOICE_STYLE_PRESETS[voiceSettings.style];
+    if(preset){
+      voiceSettings.rate = preset.rate;
+      voiceSettings.pitch = preset.pitch;
+      rateRange.value = preset.rate;
+      rateVal.textContent = preset.rate.toFixed(1) + 'x';
+      pitchRange.value = preset.pitch;
+      pitchVal.textContent = preset.pitch.toFixed(1);
+    }
+    if(voiceSettings.style === 'glitch' || voiceSettings.style === 'sara'){
+      const femaleVoice = pickFemaleVoice();
+      if(femaleVoice){
+        voiceSettings.voiceURI = femaleVoice.voiceURI;
+        voiceSelect.value = femaleVoice.voiceURI;
+      }
+    }
+  });
+  testVoiceBtn.addEventListener('click', ()=>{
+    speak("Hi, this is a preview of how I'll sound when reading replies aloud.", null, null);
+  });
+
+  if(voiceLangSelect){
+    voiceLangSelect.addEventListener('change', ()=>{
+      voiceSettings.lang = voiceLangSelect.value;
+      if(recognition) recognition.lang = voiceSettings.lang;
+      try{ localStorage.setItem('aura_voice_lang', voiceSettings.lang); }catch(e){}
+    });
+  }
+
+  if(locationModeSelect){
+    locationModeSelect.addEventListener('change', ()=>{
+      locationSettings.mode = locationModeSelect.value;
+      manualLocationField.style.display = locationSettings.mode === 'manual' ? 'block' : 'none';
+      try{ localStorage.setItem('aura_location_mode', locationSettings.mode); }catch(e){}
+      if(locationSettings.mode === 'manual'){
+        if(locationSettings.manualPlace) fetchWeatherForPlaceName(locationSettings.manualPlace);
+        else renderWeatherPill(true, 'Type a location');
+      } else {
+        initWeather();
+      }
+    });
+  }
+  if(manualLocationBtn){
+    manualLocationBtn.addEventListener('click', ()=>{
+      const place = manualLocationInput.value.trim();
+      if(!place) return;
+      locationSettings.manualPlace = place;
+      try{ localStorage.setItem('aura_manual_place', place); }catch(e){}
+      fetchWeatherForPlaceName(place);
+    });
+  }
+  if(manualLocationInput){
+    manualLocationInput.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter') manualLocationBtn.click();
+    });
+  }
+
+  /* ---------------- API settings modal ---------------- */
+  const PROVIDER_LABELS = { anthropic: 'Anthropic', gemini: 'Gemini' };
+
+  function updateApiStatus(state, text){
+    apiStatus.classList.remove('connected','error');
+    if(state) apiStatus.classList.add(state);
+    apiStatusText.textContent = text;
+  }
+  function refreshApiStatusFromSaved(){
+    const settings = currentProviderSettings();
+    const label = PROVIDER_LABELS[apiSettings.provider];
+    if(settings.key){
+      updateApiStatus('connected', label + ' API key saved — live responses enabled.');
+    } else {
+      updateApiStatus(null, 'No API key saved — using demo responses.');
+    }
+    refreshDisclaimer();
+  }
+
+  function populateModelOptions(){
+    const provider = apiSettings.provider;
+    const settings = apiSettings[provider];
+    apiModelSelect.innerHTML = '';
+    MODEL_OPTIONS[provider].forEach(opt=>{
+      const o = document.createElement('option');
+      o.value = opt.value;
+      o.textContent = opt.label;
+      apiModelSelect.appendChild(o);
+    });
+    apiModelSelect.value = settings.model;
+  }
+
+  function syncModalToProvider(){
+    const provider = apiSettings.provider;
+    const settings = apiSettings[provider];
+    providerSelect.value = provider;
+    apiKeyLabel.textContent = PROVIDER_LABELS[provider] + ' API key';
+    apiKeyInput.placeholder = KEY_PLACEHOLDERS[provider];
+    apiKeyInput.value = settings.key;
+    populateModelOptions();
+    refreshApiStatusFromSaved();
+  }
+
+  syncModalToProvider();
+
+  function openApiModal(){ syncModalToProvider(); apiOverlay.classList.add('open'); }
+  function closeApiModalFn(){ apiOverlay.classList.remove('open'); }
+  apiSettingsBtn.addEventListener('click', openApiModal);
+  closeApiModal.addEventListener('click', closeApiModalFn);
+  apiOverlay.addEventListener('click', (e)=>{ if(e.target === apiOverlay) closeApiModalFn(); });
+
+  providerSelect.addEventListener('change', ()=>{
+    apiSettings.provider = providerSelect.value;
+    try{ localStorage.setItem('aura_api_provider', apiSettings.provider); }catch(e){}
+    syncModalToProvider();
+  });
+
+  toggleKeyVisible.addEventListener('click', ()=>{
+    apiKeyInput.type = apiKeyInput.type === 'password' ? 'text' : 'password';
+  });
+
+  apiModelSelect.addEventListener('change', ()=>{
+    const settings = currentProviderSettings();
+    settings.model = apiModelSelect.value;
+    try{ localStorage.setItem('aura_' + apiSettings.provider + '_model', settings.model); }catch(e){}
+  });
+
+  saveApiKeyBtn.addEventListener('click', ()=>{
+    const provider = apiSettings.provider;
+    const settings = apiSettings[provider];
+    settings.key = apiKeyInput.value.trim();
+    try{
+      if(settings.key) localStorage.setItem('aura_' + provider + '_key', settings.key);
+      else localStorage.removeItem('aura_' + provider + '_key');
+      localStorage.setItem('aura_' + provider + '_model', settings.model);
+      localStorage.setItem('aura_api_provider', provider);
+    }catch(e){}
+    refreshApiStatusFromSaved();
+  });
+
+  clearApiKeyBtn.addEventListener('click', ()=>{
+    const provider = apiSettings.provider;
+    apiSettings[provider].key = '';
+    apiKeyInput.value = '';
+    try{ localStorage.removeItem('aura_' + provider + '_key'); }catch(e){}
+    refreshApiStatusFromSaved();
+  });
+
+  testApiKeyBtn.addEventListener('click', async ()=>{
+    const provider = apiSettings.provider;
+    const key = apiKeyInput.value.trim();
+    if(!key){
+      updateApiStatus('error', 'Enter an API key first.');
+      return;
+    }
+    updateApiStatus(null, 'Testing connection…');
+    try{
+      const reply = await callProviderAPI('Say "connected" and nothing else.', provider, key, apiModelSelect.value);
+      updateApiStatus('connected', 'Success: ' + reply.text.slice(0,60));
+    }catch(err){
+      updateApiStatus('error', 'Connection failed: ' + err.message);
+    }
+  });
+
+  /* Pick the most likely female-sounding system voice available */
+  function pickFemaleVoice(){
+    if(!availableVoices.length) return null;
+    const femaleHints = ['female','woman','samantha','victoria','zira','susan','karen','moira',
+      'tessa','fiona','veena','salli','joanna','kendra','kimberly','ivy','amy','emma','ava','allison','serena'];
+    let found = availableVoices.find(v=>{
+      const n = v.name.toLowerCase();
+      return femaleHints.some(h=>n.includes(h));
+    });
+    if(!found){
+      found = availableVoices.find(v=> /female/i.test(v.name)) || availableVoices[0];
+    }
+    return found;
+  }
+
+  /* ---------------- Text-to-speech ---------------- */
+  let availableVoices = [];
+  function loadVoices(){
+    availableVoices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+    if(availableVoices.length === 0) return;
+    voiceSelect.innerHTML = '';
+    availableVoices.forEach(v=>{
+      const opt = document.createElement('option');
+      opt.value = v.voiceURI;
+      opt.textContent = v.name + ' (' + v.lang + ')';
+      voiceSelect.appendChild(opt);
+    });
+    if(!voiceSettings.voiceURI){
+      voiceSettings.voiceURI = availableVoices[0].voiceURI;
+    }
+    voiceSelect.value = voiceSettings.voiceURI;
+  }
+  if('speechSynthesis' in window){
+    loadVoices();
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+  } else {
+    voiceSelect.innerHTML = '<option>Speech synthesis not supported</option>';
+  }
+
+  function speak(text, bubbleEl, avatarEl){
+    if(!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+
+    if(voiceSettings.style === 'glitch'){
+      speakGlitch(text, bubbleEl, avatarEl);
+      return;
+    }
+
+    const utter = new SpeechSynthesisUtterance(text);
+    const chosen = availableVoices.find(v=>v.voiceURI === voiceSettings.voiceURI);
+    if(chosen) utter.voice = chosen;
+    utter.rate = voiceSettings.rate;
+    utter.pitch = voiceSettings.pitch;
+    utter.volume = voiceSettings.volume;
+    if(avatarEl) avatarEl.classList.add('talking');
+    utter.onend = utter.onerror = ()=>{ if(avatarEl) avatarEl.classList.remove('talking'); };
+    window.speechSynthesis.speak(utter);
+  }
+
+  /* Glitchy female voice: breaks text into chunks, jitters pitch/rate
+     per chunk, occasionally stutters a syllable, and flickers the
+     bubble/avatar visually while it talks. */
+  function speakGlitch(text, bubbleEl, avatarEl){
+    const femaleVoice = availableVoices.find(v=>v.voiceURI===voiceSettings.voiceURI) || pickFemaleVoice();
+    const words = text.split(/(\s+)/).filter(w=>w.length);
+    const queue = [];
+
+    words.forEach(w=>{
+      if(/\S/.test(w) && w.length > 2 && Math.random() < 0.16){
+        // stutter: repeat the first syllable-ish chunk once, glitchy style
+        const stutter = w.slice(0, Math.min(2, w.length));
+        queue.push(stutter + '-');
+      }
+      queue.push(w);
+    });
+
+    if(bubbleEl) bubbleEl.classList.add('glitching');
+    if(avatarEl) avatarEl.classList.add('glitching','talking');
+
+    let i = 0;
+    function next(){
+      if(i >= queue.length){
+        if(bubbleEl) bubbleEl.classList.remove('glitching');
+        if(avatarEl) avatarEl.classList.remove('glitching','talking');
+        return;
+      }
+      const chunk = queue[i++];
+      if(!/\S/.test(chunk)){ next(); return; }
+      const utter = new SpeechSynthesisUtterance(chunk);
+      if(femaleVoice) utter.voice = femaleVoice;
+      utter.rate = Math.max(0.4, voiceSettings.rate + (Math.random()*0.7 - 0.2));
+      utter.pitch = Math.min(2, Math.max(0, voiceSettings.pitch + 0.35 + (Math.random()*0.6 - 0.3)));
+      utter.volume = voiceSettings.volume;
+      utter.onend = ()=>{
+        const gap = Math.random() < 0.12 ? 140 : 10;
+        setTimeout(next, gap);
+      };
+      utter.onerror = next;
+      window.speechSynthesis.speak(utter);
+    }
+    next();
+  }
+
+  /* ---------------- Speech-to-text ----------------
+     Two paths, chosen automatically based on what the device supports:
+
+     1) Native Web Speech API (SpeechRecognition) — works in Chrome/Edge
+        on desktop and Android. This is the fast, live-transcript path.
+
+     2) Record + transcribe fallback — used whenever SpeechRecognition
+        isn't available, which today means iPhone, iPad, and most other
+        tablets: Safari (and every browser on iOS, since they all use
+        WebKit under the hood) has never implemented SpeechRecognition,
+        so no amount of JavaScript on a page can turn it on there — it's
+        a platform limitation, not a bug in this app. Instead, on those
+        devices tapping the mic records audio with MediaRecorder, then
+        sends the clip to Gemini (which can transcribe audio) once the
+        recording stops. This needs a free Gemini API key saved in
+        API settings; without one, mic taps on those devices explain
+        that and suggest typing instead or adding a key. */
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const recorderSupported = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
+  let fallbackRecorder = null;
+  let fallbackChunks = [];
+  let fallbackRecording = false;
+
+  function afterTranscript(transcript){
+    if(!transcript) return;
+    const cmd = checkVoiceCommand(transcript) || parseOpenAppCommand(transcript);
+    if(cmd){
+      sendMessage(transcript);
+      return;
+    }
+    promptInput.value = transcript;
+    autoGrow();
+    updateSendState();
+    if(voiceSettings.autoSend) sendMessage(transcript);
+  }
+
+  function blobToBase64(blob){
+    return new Promise((resolve, reject)=>{
+      const reader = new FileReader();
+      reader.onloadend = ()=> resolve(String(reader.result).split(',')[1] || '');
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  async function transcribeAudioWithGemini(base64, mimeType){
+    const key = apiSettings.gemini.key;
+    if(!key){ const e = new Error('no-gemini-key'); e.code = 'no-gemini-key'; throw e; }
+    const model = 'gemini-2.5-flash';
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + encodeURIComponent(key);
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          role: 'user',
+          parts: [
+            { inline_data: { mime_type: mimeType, data: base64 } },
+            { text: 'Transcribe only the spoken words in this audio clip, exactly as said. Reply with the transcription text and nothing else — no quotes, no commentary.' }
+          ]
+        }]
+      })
+    });
+    if(!response.ok){
+      let detail = '';
+      try{ const j = await response.json(); detail = j.error && j.error.message ? j.error.message : ''; }catch(e){}
+      throw new Error(detail || ('HTTP ' + response.status));
+    }
+    const data = await response.json();
+    const candidate = data.candidates && data.candidates[0];
+    const parts = candidate && candidate.content && candidate.content.parts ? candidate.content.parts : [];
+    return parts.map(p => p.text || '').join(' ').trim();
+  }
+
+  async function startFallbackRecording(){
+    try{
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      fallbackChunks = [];
+      let mimeType = '';
+      if(window.MediaRecorder.isTypeSupported){
+        if(MediaRecorder.isTypeSupported('audio/mp4')) mimeType = 'audio/mp4';
+        else if(MediaRecorder.isTypeSupported('audio/webm')) mimeType = 'audio/webm';
+      }
+      fallbackRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      fallbackRecorder.ondataavailable = (e)=>{ if(e.data && e.data.size > 0) fallbackChunks.push(e.data); };
+      fallbackRecorder.onstop = async ()=>{
+        stream.getTracks().forEach(t=>t.stop());
+        fallbackRecording = false;
+        micBtn.classList.remove('listening');
+        if(!fallbackChunks.length) return;
+        const blob = new Blob(fallbackChunks, { type: fallbackRecorder.mimeType || mimeType || 'audio/webm' });
+        const prevPlaceholder = promptInput.placeholder;
+        promptInput.placeholder = 'Transcribing your voice…';
+        try{
+          const base64 = await blobToBase64(blob);
+          const transcript = await transcribeAudioWithGemini(base64, blob.type);
+          promptInput.placeholder = prevPlaceholder;
+          afterTranscript(transcript);
+        }catch(err){
+          promptInput.placeholder = prevPlaceholder;
+          if(err.code === 'no-gemini-key'){
+            appendBubble('ai', "🎙️ I recorded that, but live voice recognition isn't available on this browser/device (that's normal for iPhone, iPad, and most tablets — Safari and other iOS browsers don't support it). To transcribe recordings here, add a free Gemini API key in API settings. In the meantime you can type your message, or try Chrome on Android or desktop for built-in voice typing.", false);
+          } else {
+            appendBubble('ai', "⚠️ Couldn't transcribe that recording: " + err.message, false);
+          }
+        }
+      };
+      fallbackRecorder.start();
+      fallbackRecording = true;
+      micBtn.classList.add('listening');
+    }catch(e){
+      alert('Microphone access was blocked or unavailable. Please allow microphone permission for this page in your browser/device settings, then try again.');
+    }
+  }
+  function stopFallbackRecording(){
+    if(fallbackRecorder && fallbackRecorder.state !== 'inactive') fallbackRecorder.stop();
+  }
+
+  if(SR){
+    recognition = new SR();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = voiceSettings.lang || 'en-US';
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = ()=>{
+      recognizing = true;
+      micBtn.classList.add('listening');
+    };
+    recognition.onend = ()=>{
+      recognizing = false;
+      micBtn.classList.remove('listening');
+    };
+    recognition.onerror = (event)=>{
+      recognizing = false;
+      micBtn.classList.remove('listening');
+      // "not-allowed"/"service-not-allowed" show up on some mobile browsers
+      // (including in-app webviews) even though SpeechRecognition exists —
+      // fall back to record+transcribe in that case if we can.
+      if((event.error === 'not-allowed' || event.error === 'service-not-allowed' || event.error === 'network') && recorderSupported){
+        startFallbackRecording();
+      }
+    };
+    recognition.onresult = (event)=>{
+      let finalTranscript = '';
+      let interim = '';
+      for(let i=event.resultIndex; i<event.results.length; i++){
+        const transcript = event.results[i][0].transcript;
+        if(event.results[i].isFinal) finalTranscript += transcript;
+        else interim += transcript;
+      }
+      promptInput.value = (finalTranscript || interim);
+      autoGrow();
+      updateSendState();
+      if(finalTranscript){
+        const cmd = checkVoiceCommand(finalTranscript) || parseOpenAppCommand(finalTranscript);
+        if(cmd || voiceSettings.autoSend) sendMessage(finalTranscript);
+      }
+    };
+
+    micBtn.title = 'Speak (or press Ctrl+M)';
+    micBtn.addEventListener('click', ()=>{
+      if(recognizing){
+        recognition.stop();
+      } else {
+        try{ recognition.start(); }catch(e){
+          if(recorderSupported) startFallbackRecording();
+        }
+      }
+    });
+  } else if(recorderSupported){
+    // Typical path on iPhone / iPad / most tablets, where SpeechRecognition
+    // doesn't exist at all: record, then transcribe via Gemini on stop.
+    micBtn.title = 'Tap to record, tap again to stop (voice typing via Gemini) — or press Ctrl+M';
+    micBtn.addEventListener('click', ()=>{
+      if(fallbackRecording) stopFallbackRecording();
+      else startFallbackRecording();
+    });
+  } else {
+    micBtn.addEventListener('click', ()=>{
+      alert("Voice input isn't available: this browser doesn't support speech recognition or microphone recording. Please type your message instead, or try a different browser.");
+    });
+  }
+
+  /* ---------------- Keyboard shortcut: Ctrl+M activates the mic ---------------- */
+  document.addEventListener('keydown', (e)=>{
+    const key = (e.key || '').toLowerCase();
+    if((e.ctrlKey || e.metaKey) && key === 'm'){
+      e.preventDefault();
+      micBtn.click();
+    }
+  });
+
+  /* ---------------- Init ---------------- */
+  applyBrandLogo();
+  applyCompanionMode();
+  if(voiceLangSelect) voiceLangSelect.value = voiceSettings.lang;
+  if(locationModeSelect){
+    locationModeSelect.value = locationSettings.mode;
+    manualLocationField.style.display = locationSettings.mode === 'manual' ? 'block' : 'none';
+  }
+  if(manualLocationInput && locationSettings.manualPlace) manualLocationInput.value = locationSettings.manualPlace;
+  if(recognition) recognition.lang = voiceSettings.lang;
+  initWeather();
+  newChat();
+  updateSendState();
+})();
+
+</script>
+</body>
+</html>
